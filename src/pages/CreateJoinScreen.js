@@ -53,7 +53,7 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
       alert("Failed to create league.");
       return;
     }
-
+    console.log("User Leagues ", leagues);
     navigate("/league-setup", { state: { mode: "create", leagueName, leagueId: data.league_id, userId: currentUser.id, leagues } });
   };
 
@@ -65,7 +65,7 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
       console.error("Error fetching leagues:", error);
       return;
     }
-    navigate("/league-setup", { state: { mode: "join", userId: currentUser.id, leagues: data } });
+    navigate("/league-setup", { state: { mode: "join", userId: currentUser.id, leagues } });
   };
 
   return (
@@ -102,7 +102,7 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
                 <ListItemButton
                   onClick={() => {
                     onLeagueChosen(league.id);
-                    navigate("/main-tabs");
+                    navigate("/players");
                   }}
                 >
                   <ListItemText sx={{ textAlign: "center", color:"white" }} primary={league.name} secondary={league.team_name} />

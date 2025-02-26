@@ -80,6 +80,23 @@ const WelcomeScreen = () => {
           >
             Existing User
           </Button>
+          <Button
+            variant="outlined"
+            sx={{
+              borderColor: "#1976d2",
+              color: "#1976d2",
+              borderRadius: "50px",
+              padding: "1rem",
+              fontSize: "1rem",
+              '&:hover': {
+                backgroundColor: "#1976d2",
+                color: "#fff"
+              }
+            }}
+            onClick={() => navigate("/players")}
+          >
+            Players
+          </Button>
         </Box>
       </Container>
     </Box>
