@@ -10,6 +10,8 @@ import CreateJoinScreen from './pages/CreateJoinScreen';
 import LeagueSetupScreen from './pages/LeagueSetupScreen';
 import PlayersScreen from './pages/PlayersScreen.js';
 import MyTeamScreen from './pages/MyTeamScreen.js';
+import LeagueScreen from './pages/LeagueScreen.js';
+import DraftScreen from './pages/DraftScreen.js';
 import { LeagueProvider, useLeague } from "./LeagueContext";
 
 
@@ -95,6 +97,8 @@ function App() {
           <Route path="/league-setup" element={<LeagueSetupScreen onLeagueChosen={(newLeagueId) => setSelectedLeagueId(newLeagueId)}/>} />
           <Route path="/players" element={<PlayersScreen playersBase={playerStats}/>} />
           <Route path="/my-team" element={<MyTeamScreen playersBase={playerStats}/>} />
+          <Route path="/league-standings" element={<LeagueScreen/>} />
+          <Route path="/draft" element={<DraftScreen playersBase={playerStats}/>} />
 
         </Routes>
       </Router>

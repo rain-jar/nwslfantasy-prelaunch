@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, Select, MenuItem, Table, TableContainer, TableHead, TableRow, TableCell, TableBody, Paper, Card, CardContent, Typography } from "@mui/material";
+import { Button, Select, MenuItem, Table, TableContainer, TableHead, TableRow, TableCell, TableBody, Paper, Card, CardContent, Typography, Modal, Box } from "@mui/material";
 import NavigationBar from "../NavigationBar";
 import { supabase } from "../supabaseClient";
 import { LeagueProvider, useLeague } from "../LeagueContext";
@@ -7,10 +7,14 @@ import { LeagueProvider, useLeague } from "../LeagueContext";
 
 const MyTeamScreen = ({playersBase}) => {
   const [statsFilter, setStatsFilter] = useState("2024");
-  const { leagueParticipants, setLeagueParticipants, userId, users } = useLeague();
+  const { leagueParticipants, setLeagueParticipants, userId, users, availablePlayers, leagueId } = useLeague();
   const [currentUserData, setcurrentUserData] = useState([]); 
+  const [selectedPlayer, setSelectedPlayer] = useState([]);
+  const [openModal, setOpenModal] = useState(false);
+
 
   console.log("Checking league participants before update ", leagueParticipants, userId, users);
+  console.log("Current User Data ", currentUserData);
 
   const teamName = leagueParticipants.find((m) => m.user_id === userId).team_name || {};
   const userName = users.find((m) => m.id === userId).user_name || {};
@@ -133,7 +137,41 @@ const MyTeamScreen = ({playersBase}) => {
     fetchPlayers();
   }, [leagueParticipants, statsFilter]);
 
+  const handleDrop = async(player) => {
+    console.log("Needs to define player drop");
+    const currentRoster = leagueParticipants.find((participant) => participant.user_id == userId).roster || []; 
 
+    const updatedRoster = currentRoster.filter((p) => p.player_id !== player.player_id);
+
+    console.log("🔍 Before updating availablePlayers:", availablePlayers);
+    const { error: rosterError } = await supabase
+      .from("league_rosters")
+      .update({ roster: updatedRoster })
+      .eq("league_id", leagueId)
+      .eq("user_id",userId);
+
+    if (rosterError) {
+      console.error("Error updating roster:", rosterError);
+      return;
+    }
+
+    // Add player back to availablePlayers in Supabase
+    console.log("🔍 Before inserting playerList:", availablePlayers);
+    const { error: playerError } = await supabase
+      .from("league_players")
+      .update({ onroster: false })
+      .eq("player_id", player.player_id)
+      .eq("league_id", leagueId);
+      console.log("Player: "+player.name+"'s onRoster status is false in the players table in Supabase")
+
+
+    if (playerError) {
+      console.error("Error adding player back:", playerError);
+      return;
+    }
+
+
+  };
 
 
   return (
@@ -170,7 +208,6 @@ const MyTeamScreen = ({playersBase}) => {
               <TableRow>
                 <TableCell>Pos</TableCell>
                 <TableCell></TableCell>
-                <TableCell></TableCell>
                 <TableCell>Name</TableCell>
                 <TableCell>Team</TableCell>
                 <TableCell>Fpts</TableCell>
@@ -187,9 +224,14 @@ const MyTeamScreen = ({playersBase}) => {
             </TableHead>
             <TableBody>
                 {currentUserData.map((player, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={index}
+                      onClick={() => {
+                        setSelectedPlayer(player);
+                        setOpenModal(true); // ✅ Open modal when row is clicked
+                      }}
+                      sx={{ cursor: "pointer", "&:hover": { backgroundColor: "rgba(16, 86, 51, 0.1)" } }} // Hover effect for better UX
+                    >
                     <TableCell>{player.position}</TableCell>
-                    <TableCell><Button className="add-btn" sx={{"&:hover": {backgroundColor: "kellygreen", color: "black"}}}>Add</Button></TableCell>
                     <TableCell><img src={process.env.PUBLIC_URL + "/placeholder.png"} alt={player.name} className="player-img" /></TableCell>
                     <TableCell>{player.name}</TableCell>
                     <TableCell>{player.team}</TableCell>
@@ -209,8 +251,49 @@ const MyTeamScreen = ({playersBase}) => {
           </Table>
         </TableContainer>
 
+        {selectedPlayer && (
+          <Modal open={openModal} onClose={() => setOpenModal(false)}>
+            <Box className="modal-box">
+              <Typography variant="h6" className="modal-text">
+                Are you sure you want to drop {selectedPlayer.name}?
+              </Typography>
+
+              <div className="modal-actions">
+                <Button 
+                  className="confirm-btn" 
+                  onClick={() => { 
+                    handleDrop(selectedPlayer); // ✅ Call drop function
+                    setOpenModal(false); 
+                  }}
+                >
+                  Yes
+                </Button>
+                <Button 
+                  className="cancel-btn" 
+                  onClick={() => setOpenModal(false)}
+                >
+                  No
+                </Button>
+              </div>
+            </Box>
+          </Modal>
+        )}        
+
         {/* Styles */}
         <style jsx>{`
+
+          html, body {
+              overflow-x: hidden; /* ✅ Prevents horizontal scrolling */
+              background-color: black; /* ✅ Ensures no white space appears */
+          }
+
+          body {
+              min-height: 100vh; /* ✅ Ensures body takes full height */
+              margin: 0; /* ✅ Removes any default margin that might cause shifting */
+              padding: 0;
+          }
+
+          
           .my-team-screen {
             width: 100%;
             background: black;
@@ -298,6 +381,57 @@ const MyTeamScreen = ({playersBase}) => {
               height: 40px;
               border-radius: 50%;
             }
+
+            .modal-box {
+              background: black;
+              color: white;
+              padding: 25px;
+              width: 300px;
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              text-align: center;
+              border-radius: 12px;
+              box-shadow: 5px 5px 15px rgba(0, 255, 127, 0.2), -5px -5px 15px rgba(0, 255, 127, 0.1);
+              border: 1px solid rgba(0, 255, 127, 0.5);
+            }
+
+            .modal-text {
+              font-size: 1.2rem;
+              margin-bottom: 20px;
+            }
+
+            .modal-actions {
+              display: flex;
+              justify-content: center;
+              gap: 15px;
+            }
+
+            .confirm-btn {
+              background: white;
+              color: black;
+              border-radius: 20px;
+              padding: 8px 20px;
+              font-weight: bold;
+            }
+
+            .confirm-btn:hover {
+              background: darkgreen;
+            }
+
+            .cancel-btn {
+              background: gray;
+              color: white;
+              border-radius: 20px;
+              padding: 8px 20px;
+              font-weight: bold;
+            }
+
+            .cancel-btn:hover {
+              background: darkgray;
+            }
+
 
             .players-table {
               flex-grow: 1; 

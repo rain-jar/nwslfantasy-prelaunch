@@ -2,9 +2,11 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {supabase} from "./supabaseClient";
 import {subscribeToUserInserts} from "./supabaseListeners";
+import {subscribeToLeagueInserts} from "./supabaseListeners";
 import {subscribeToLeaguePlayerInserts} from "./supabaseListeners";
 import {subscribeToLeagueRosterInserts} from "./supabaseListeners";
-
+import {subscribeToLeaguePlayerUpdates} from "./supabaseListeners";
+import { subscribeToLeagueRosterUpdates } from "./supabaseListeners";
 
 
 const LeagueContext = createContext(null);
@@ -15,7 +17,8 @@ export function LeagueProvider({leagueId, userId, children }) {
   const [users, setUsers] = useState([]);
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [leagueParticipants, setLeagueParticipants] = useState([]);
-  const [userLeagues, setLeagues] = useState([]);
+  const [userLeagues, setAvailableLeagues] = useState([]);
+
 
   useEffect(() => {
     const fetchUserInitial = async () => {
@@ -35,7 +38,7 @@ export function LeagueProvider({leagueId, userId, children }) {
   },[])
 
   console.log("LeagueProvider value:", {
-    users, availablePlayers
+    users, availablePlayers, userLeagues
   });
 
   useEffect(() => {
@@ -55,7 +58,8 @@ export function LeagueProvider({leagueId, userId, children }) {
           name: entry.leagues.league_name,
           team_name: entry.team_name
         })));
-        setLeagues(formattedLeagues);
+        setAvailableLeagues(formattedLeagues);
+        console.log("Setting User Leagues ", formattedLeagues)
       }
     };
     fetchLeagues();
@@ -65,6 +69,7 @@ export function LeagueProvider({leagueId, userId, children }) {
 
   useEffect(() => {
       console.log("Leagueid ", leagueId);
+
 
       if (!leagueId) return;
       const fetchInitial = async () => {
@@ -88,19 +93,45 @@ export function LeagueProvider({leagueId, userId, children }) {
           setLeagueParticipants(data);
         }
       };
+      const fetchLeagues = async () => {
+        const { data, error } = await supabase
+        .from("league_rosters")
+        .select("league_id, leagues(league_name), team_name")
+        .eq("user_id", userId);
+  
+        if (error) {
+          console.error("Error fetching user leagues:", error);
+        } else {
+          const formattedLeagues = (data.map((entry) => ({
+            id: entry.league_id,
+            name: entry.leagues.league_name,
+            team_name: entry.team_name
+          })));
+          setAvailableLeagues(formattedLeagues);
+          console.log("Setting User Leagues ", formattedLeagues)
+        //  setLoading(false);
+        }
+      };
+
       fetchInitial();
       fetchRosterInitial();
+    //  const unsubscribeLeagueInserts = subscribeToLeagueInserts(setAvailableLeagues);
       const unsubscribeInserts = subscribeToLeaguePlayerInserts(setAvailablePlayers);
       const unsubscribeRosterInserts = subscribeToLeagueRosterInserts(setLeagueParticipants, leagueId);
+      const unsubscribeUpdates = subscribeToLeaguePlayerUpdates(setAvailablePlayers, leagueId);
+      const unsubscribeRosterUpdates = subscribeToLeagueRosterUpdates(setLeagueParticipants, leagueId);
 
       supabase.getChannels().forEach(channel => console.log("Active channel:", channel));
 
       return () => {
         // Clean up both subscriptions
       //  unsubscribeUpdates();
+      //  unsubscribeLeagueInserts();
         unsubscribeInserts();
       //  unsubscribeRosterUpdates();
         unsubscribeRosterInserts();
+        unsubscribeUpdates();
+        unsubscribeRosterUpdates();
       };
   }, [leagueId]);
   
