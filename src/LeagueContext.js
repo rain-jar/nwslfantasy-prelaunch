@@ -11,68 +11,141 @@ import { subscribeToLeagueRosterUpdates } from "./supabaseListeners";
 
 const LeagueContext = createContext(null);
 
-export function LeagueProvider({leagueId, userId, children }) {
+export function LeagueProvider({currentLeagueId, currentUserId, children }) {
 
   // Load stored data from localStorage (or default to empty array)
   const [users, setUsers] = useState([]);
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [leagueParticipants, setLeagueParticipants] = useState([]);
-  const [userLeagues, setAvailableLeagues] = useState([]);
+
+    // Load stored data from localStorage if props are not provided
+  const [userLeagues, setUserLeagues] = useState(JSON.parse(localStorage.getItem("userLeagues")) || []);
+  const [userId, setCurrentUserId] = useState(currentUserId || localStorage.getItem("currentUserId") || null);
+  const [leagueId, setCurrentLeagueId] = useState(currentLeagueId || localStorage.getItem("currentLeagueId") || null);
+  const [loading, setLoading] = useState(true); 
 
 
+  
+// Checking session for user login persistence. 
+  useEffect(() => {
+    const checkSession = async () => {
+      setLoading(true);
+      console.log("Checking for a session");
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Session check error:", error.message);
+        return;
+      }
+      if (user) {
+        console.log("🔄 Restoring session from Supabase:", user.id);
+        setCurrentUserId(user.id);
+        localStorage.setItem("currentUserId", user.id);
+      }else{
+        console.log("❌ No valid session found, logging out.");
+        setCurrentUserId(null);
+        localStorage.removeItem("currentUserId");
+      }
+      setLoading(false);
+    };
+  
+    checkSession();
+  
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setCurrentUserId(session.user.id);
+        localStorage.setItem("currentUserId", session.user.id);
+      } else {
+        setCurrentUserId(null);
+        localStorage.removeItem("currentUserId");
+      }
+      setLoading(false); // ✅ Fix: Ensure loading is updated after login/logout
+    });
+  
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // ✅ Logout Function
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUserId(null);
+    localStorage.removeItem("currentUserId");
+    window.location.href = "/"; // ✅ Redirect to Welcome Screen
+  };
+
+
+  // Sync userId & leagueId with localStorage when they change
+  useEffect(() => {
+    if (currentUserId) {
+      setCurrentUserId(currentUserId);
+      localStorage.setItem("currentUserId", currentUserId);
+    }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (currentLeagueId) {
+      setCurrentLeagueId(currentLeagueId);
+      localStorage.setItem("currentLeagueId", currentLeagueId);
+    }
+  }, [currentLeagueId]);
+
+  // Fetch user data & listen for new users being added
   useEffect(() => {
     const fetchUserInitial = async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("*")
+        .select("*");
+
       if (!error && data) {
         setUsers(data);
         console.log("Fetching User data ", data);
       }
     };
+
     fetchUserInitial();
     const unsubscribeUserInserts = subscribeToUserInserts(setUsers);
+
     return () => {
-      unsubscribeUserInserts();
-    }
-  },[])
+      unsubscribeUserInserts(); // ✅ Cleanup
+    };
+  }, []);
 
-  console.log("LeagueProvider value:", {
-    users, availablePlayers, userLeagues
-  });
-
+  // Fetch leagues associated with the user
   useEffect(() => {
     if (!userId) return;
-        
+
     const fetchLeagues = async () => {
       const { data, error } = await supabase
-      .from("league_rosters")
-      .select("league_id, leagues(league_name), team_name")
-      .eq("user_id", userId);
+        .from("league_rosters")
+        .select("league_id, leagues(league_name), team_name")
+        .eq("user_id", userId);
 
-      if (error) {
-        console.error("Error fetching user leagues:", error);
-      } else {
-        const formattedLeagues = (data.map((entry) => ({
+      if (!error && data) {
+        const formattedLeagues = data.map((entry) => ({
           id: entry.league_id,
           name: entry.leagues.league_name,
           team_name: entry.team_name
-        })));
-        setAvailableLeagues(formattedLeagues);
-        console.log("Setting User Leagues ", formattedLeagues)
+        }));
+        setUserLeagues(formattedLeagues);
+        localStorage.setItem("userLeagues", JSON.stringify(formattedLeagues)); // ✅ Store leagues in cache
       }
     };
-    fetchLeagues();
 
-  },[userId])
+    fetchLeagues();
+  }, [userId]);
 
 
   useEffect(() => {
       console.log("Leagueid ", leagueId);
-
-
       if (!leagueId) return;
-      const fetchInitial = async () => {
+
+      const lastFetch = localStorage.getItem("lastFetchTimestamp");
+      const now = Date.now();
+  
+      // Fetch fresh data only if older than 10 minutes
+    //  if (!lastFetch || now - lastFetch > 10 * 60 * 1000) {
+        const fetchAvailablePlayers = async () => {
           const { data, error } = await supabase
             .from("league_players")
             .select("*")
@@ -80,41 +153,24 @@ export function LeagueProvider({leagueId, userId, children }) {
             .eq("onroster", false);
           if (!error && data) {
             setAvailablePlayers(data);
-            console.log("LC has set AvP to ", availablePlayers)
+      //      localStorage.setItem("lastFetchTimestamp", now);
           }
-      };
-      const fetchRosterInitial = async () => {
-        const { data, error } = await supabase
-          .from("league_rosters")
-          .select("*")
-          .eq("league_id", leagueId)
-        if (!error && data) {
-          console.log("League Participants in LeagueContext fetch ", data);
-          setLeagueParticipants(data);
-        }
-      };
-      const fetchLeagues = async () => {
-        const { data, error } = await supabase
-        .from("league_rosters")
-        .select("league_id, leagues(league_name), team_name")
-        .eq("user_id", userId);
+        };
   
-        if (error) {
-          console.error("Error fetching user leagues:", error);
-        } else {
-          const formattedLeagues = (data.map((entry) => ({
-            id: entry.league_id,
-            name: entry.leagues.league_name,
-            team_name: entry.team_name
-          })));
-          setAvailableLeagues(formattedLeagues);
-          console.log("Setting User Leagues ", formattedLeagues)
-        //  setLoading(false);
-        }
-      };
+        const fetchLeagueParticipants = async () => {
+          const { data, error } = await supabase
+            .from("league_rosters")
+            .select("*")
+            .eq("league_id", leagueId);
+          if (!error && data) {
+            setLeagueParticipants(data);
+          }
+        };
+  
+        fetchAvailablePlayers();
+        fetchLeagueParticipants();
+    //  }
 
-      fetchInitial();
-      fetchRosterInitial();
     //  const unsubscribeLeagueInserts = subscribeToLeagueInserts(setAvailableLeagues);
       const unsubscribeInserts = subscribeToLeaguePlayerInserts(setAvailablePlayers);
       const unsubscribeRosterInserts = subscribeToLeagueRosterInserts(setLeagueParticipants, leagueId);
@@ -125,10 +181,7 @@ export function LeagueProvider({leagueId, userId, children }) {
 
       return () => {
         // Clean up both subscriptions
-      //  unsubscribeUpdates();
-      //  unsubscribeLeagueInserts();
         unsubscribeInserts();
-      //  unsubscribeRosterUpdates();
         unsubscribeRosterInserts();
         unsubscribeUpdates();
         unsubscribeRosterUpdates();
@@ -137,7 +190,7 @@ export function LeagueProvider({leagueId, userId, children }) {
   
 
   return (
-    <LeagueContext.Provider value={{users, setUsers, availablePlayers, setAvailablePlayers, leagueParticipants, setLeagueParticipants, leagueId, userId, userLeagues}}>
+    <LeagueContext.Provider value={{users, setUsers, availablePlayers, setAvailablePlayers, leagueParticipants, setLeagueParticipants, leagueId, userId, userLeagues, setCurrentUserId, loading, handleLogout}}>
       {children}
     </LeagueContext.Provider>
   );

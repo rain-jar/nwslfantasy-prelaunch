@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Box, Button, Typography, Container, TextField, List, ListItem, ListItemButton, ListItemText, MenuItem, Select } from "@mui/material";
+import { Box, Button, Typography, Container, TextField, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, Card, CardContent } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import {subscribeToLeagueInserts} from "../supabaseListeners";
@@ -126,7 +126,7 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
 
     navigate("/players");
   };
-
+/*
   return (
     <Box
       sx={{
@@ -226,6 +226,176 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
       </Container>
     </Box>
   );
+*/
+return (
+  <div>
+    <div className="league-setup-screen">
+      {/* League Setup Card */}
+      <Card className="league-setup-card">
+        <CardContent>
+          <Typography variant="h5" className="title">
+            {mode === "create" ? "Create League" : "Join a League"}
+          </Typography>
+
+          {mode === "create" ? (
+            <>
+              <Typography variant="h6" className="league-info">League: {leagueName}</Typography>
+              <Typography variant="h6" className="league-info">League Type</Typography>
+              <Select
+                value={leagueType}
+                disabled
+                fullWidth
+                className="league-select"
+              >
+                <MenuItem value="Standard H2H">Standard H2H</MenuItem>
+              </Select>
+
+              <Typography variant="h6" className="league-info">Your Team Name</Typography>
+              <TextField
+                placeholder="Enter Team Name"
+                fullWidth
+                className="team-name-input"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+              />
+
+              <Button className="confirm-btn" onClick={handleConfirmSetup}>
+                Confirm & Proceed
+              </Button>
+            </>
+          ) : (
+            <>
+              <Typography variant="h6" className="league-info">Select a League</Typography>
+              <List>
+                {availableLeagues.map((league) => (
+                  <ListItem key={league.league_id} disablePadding>
+                    <ListItemButton
+                      className="league-item"
+                      onClick={() => setSelectedLeague(league)}
+                    >
+                      <ListItemText primary={league.league_name} />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+
+              {selectedLeague && (
+                <>
+                  <Typography variant="h6" className="league-info">Your Team Name</Typography>
+                  <TextField
+                    placeholder="Enter Team Name"
+                    fullWidth
+                    className="team-name-input"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                  />
+
+                  <Button className="confirm-btn" onClick={handleConfirmSetup}>
+                    Join League
+                  </Button>
+                </>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+
+    {/* Styles */}
+    <style jsx>{`
+
+      html, body {
+          overflow-x: hidden; /* ✅ Prevents horizontal scrolling */
+          background-color: black; /* ✅ Ensures no white space appears */
+      }
+
+      body {
+          min-height: 100vh; /* ✅ Ensures body takes full height */
+          margin: 0; /* ✅ Removes any default margin that might cause shifting */
+          padding: 0;
+      }
+
+      .league-setup-screen {
+        width: 100%;
+        background: black;
+        color: white;
+        text-align: center;
+        padding: 20px;
+        min-height: 100vh;
+        justify-content: space-between;
+      }
+
+      .league-setup-card {
+        width: 80%;
+        margin: 20px auto;
+        background: white;
+        color: black;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 5px 5px 15px rgba(0, 255, 127, 0.2), -5px -5px 15px rgba(0, 255, 127, 0.1);
+      }
+
+      .title {
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+      }
+
+      .league-info {
+        font-size: 1.1rem;
+        margin-top: 15px;
+      }
+
+      .league-select {
+        background: white;
+        color: black;
+        border-radius: 5px;
+        margin-top: 10px;
+      }
+
+      .team-name-input {
+        background: white;
+        color: black;
+        margin-top: 10px;
+        border-radius: 5px;
+      }
+
+      .league-item {
+          text-align: center;
+          color: black;
+          background: rgba(5, 5, 5, 0.3); /* ✅ Subtle contrast */
+          border: 2px solid rgba(243, 247, 245, 0.5); /* ✅ Greenish border */
+          border-radius: 12px; /* ✅ Smooth edges */
+          padding: 10px;
+          margin: 8px 0; /* ✅ Adds spacing between items */
+          box-shadow: 0 4px 10px rgba(7, 43, 25, 0.2); /* ✅ Soft glow effect */
+          transition: 0.3s ease-in-out;
+      }
+
+      .league-item:hover {
+        background: rgba(14, 59, 37, 0.8);
+        box-shadow: 0 6px 15px rgba(12, 52, 32, 0.4);
+      }
+
+      .confirm-btn {
+        background: kellygreen;
+        color: black;
+        border-radius: 30px;
+        padding: 12px 24px;
+        font-weight: bold;
+        font-size: 1rem;
+        box-shadow: 0 4px 10px rgba(0, 255, 127, 0.3);
+        margin-top: 20px;
+      }
+
+      .confirm-btn:hover {
+        background: darkgreen;
+        color: white;
+      }
+    `}</style>
+  </div>
+);
+
+
 };
 
 export default LeagueSetupScreen;

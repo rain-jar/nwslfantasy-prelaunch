@@ -7,7 +7,7 @@ import {subscribeToDraftUpdates} from "../supabaseListeners";
 
 const DraftScreen = ({playersBase}) => {
 
-    const { availablePlayers, setAvailablePlayers, leagueId, users, userId } = useLeague();
+    const { availablePlayers, setAvailablePlayers, leagueId, users, userId, userLeagues } = useLeague();
     const { leagueParticipants, setLeagueParticipants} = useLeague();
     const [positionFilter, setPositionFilter] = useState("All");
     
@@ -24,9 +24,14 @@ const DraftScreen = ({playersBase}) => {
 
 
     const positions = ["All", "FW", "MF", "DF", "GK"];
+    let leagueName;
 
-
-    const leagueName = "Fantasy League";
+    const leagueNameArray = userLeagues.find((participant) => participant.id === leagueId);
+    if (leagueNameArray) {
+        leagueName = leagueNameArray.name;
+    }else{
+        leagueName = "Fantasy League";
+    }
  //   const currentRound = 1; // Placeholder for now
     const playersLeft = 30; // Placeholder for now
     const userTurn = false; // Placeholder - will be dynamic later
@@ -58,19 +63,18 @@ const DraftScreen = ({playersBase}) => {
             await filterPlayers();
         };
         fetchData();
-    }, [positionFilter]);
+    }, [positionFilter, players]);
 
     useEffect(() => {
+        console.log("After listening to the PlayerUpdate listener ", loading);
         const fetchMergedData = async() => {
             if (!loading && availablePlayers?.length > 0) {
-                console.log("After fetching ", availablePlayers);
+                console.log("Fetched Available Players from Listener ", availablePlayers);
                 await mergeFunc();
+                console.log("Did you wait for FilterPlayers in MergeFunc?");
             }
         }
-        fetchMergedData().then( async() => {
-            console.log("Calling filters due to available players change");
-            await filterPlayers();
-        });
+        fetchMergedData();
       }, [availablePlayers, loading]);
 
 
@@ -86,6 +90,8 @@ const DraftScreen = ({playersBase}) => {
           });
           console.log("Merge Func complete");
           setPlayers(mergedList);
+          await filterPlayers();
+          console.log("Waited for filterPlayers in MergeFunc");
     }
 
     const teams = leagueParticipants.map((user) => ({
@@ -96,8 +102,9 @@ const DraftScreen = ({playersBase}) => {
     
     const currentUser = users.find((user) => user.id === userId );
 
-    const filterPlayers = async(updatedList) => {
+    const filterPlayers = async() => {
         console.log("Inside Filters ", positionFilter);
+        console.log("Players ", players.length);
         let filtered;
         if (positionFilter){
             filtered = [...players];
@@ -165,9 +172,9 @@ const DraftScreen = ({playersBase}) => {
 
 
     const currentTeam = draftOrder[currentPick];
-    const test = leagueParticipants.find((participant) => participant.team_name == draftOrder[currentPick].team_name);
 
     console.log ("Current Team in DraftScreen is ", currentTeam);
+    console.log ("Test ", userLeagues, leagueId);
 
     // Helper Functions
     const nextTurn = async() => {
@@ -426,7 +433,8 @@ const DraftScreen = ({playersBase}) => {
             }
 
             .draft-card {
-                width: 80%;
+                flex-grow: 1; 
+                width: 90%;
                 margin: 20px auto;
                 background: white;
                 color: black;

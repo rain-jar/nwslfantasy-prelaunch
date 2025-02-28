@@ -11,20 +11,27 @@ const LeagueScreen = () => {
     
     const navigate = useNavigate();
     
-    const { leagueParticipants, setLeagueParticipants, leagueId, users, userId} = useLeague();
+    const { leagueParticipants, setLeagueParticipants, leagueId, users, userId, userLeagues} = useLeague();
     const [leagueUsers, setleagueUsers] = useState([...leagueParticipants]);
     const [isDataFetched, setIsDataFetched] = useState(false);
-    const [leagueName, setLeagueName] = useState();
+ //   const [leagueName, setLeagueName] = useState();
     const [loading, setLoading] = useState(false); // Add loading state
 
 
     const [statsFilter, setStatsFilter] = useState("2024");
 
-    console.log("League Name ", leagueName);
+    let leagueName;
+
+    const leagueNameArray = userLeagues.find((participant) => participant.id === leagueId);
+    if (leagueNameArray) {
+        leagueName = leagueNameArray.name;
+    }else{
+        leagueName = "Fantasy League";
+    }
 
     useEffect(() => {
         const fetchName = async () => {
-          await fetchLeagueName();
+        //  await fetchLeagueName();
           await fetchleagueUsers();
         };
         fetchName();
@@ -44,7 +51,7 @@ const LeagueScreen = () => {
         });
         setleagueUsers(leagueUsersTemp);
     }
-
+/*
     const fetchLeagueName = async () => {
         try{
           if (!isDataFetched) {
@@ -63,7 +70,7 @@ const LeagueScreen = () => {
           console.error("🔥 Unexpected fetch error:", err);
         }
       };
-
+*/
     const handleRowClick = (team) => {
         if (team.user_id === userId) {
           // If it's the current user's team, navigate to My Team tab
@@ -150,7 +157,7 @@ const LeagueScreen = () => {
             }
 
             .league-card {
-                width: 80%;
+                width: 90%;
                 margin: 20px auto;
                 background: white;
                 color: black;

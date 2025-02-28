@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Button, Typography, Container } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import shadows from "@mui/material/styles/shadows";
 
 const WelcomeScreen = () => {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ const WelcomeScreen = () => {
         sx={{
           backgroundColor: "rgba(16, 12, 12, 0)",
           borderRadius: "16px",
-          padding: "2rem",
+          padding: "5rem",
           textAlign: "center",
         }}
       >
@@ -45,18 +46,24 @@ const WelcomeScreen = () => {
         <Typography variant="h6" sx={{color: "white"}}gutterBottom>
           Select an option to continue:
         </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 4 }}>
+        <Box sx={{ display: "flex", flexDirection: "row", gap: 2, mt: 4 , justifyContent:"center"}}>
           <Button
             variant="outlined"
             sx={{
-              borderColor: "#1976d2",
-              color: "#1976d2",
+              width: "25%",
+              borderColor: "green",
+              borderRadius: 30,
+              borderWidth: 2,
+              backgroundColor: "white",
+              color: "black",
               borderRadius: "50px",
               padding: "1rem",
               fontSize: "1rem",
+              fontWeight: "bold",
+              boxShadow: 10,
               '&:hover': {
-                backgroundColor: "#1976d2",
-                color: "#fff"
+                backgroundColor: "#62FCDA",
+                color: "#000"
               }
             }}
             onClick={() => navigate("/create-profile")}
@@ -66,37 +73,27 @@ const WelcomeScreen = () => {
           <Button
             variant="outlined"
             sx={{
-              borderColor: "#1976d2",
-              color: "#1976d2",
+              width : "25%",
+              borderColor: "green",
+              borderRadius: 30,
+              borderWidth: 2,
+              backgroundColor: "white",
+              color: "black",
               borderRadius: "50px",
               padding: "1rem",
               fontSize: "1rem",
+              fontWeight: "bold",
+              boxShadow: 10,
               '&:hover': {
-                backgroundColor: "#1976d2",
-                color: "#fff"
+                backgroundColor: "#62FCDA",
+                color: "#000"
               }
             }}
             onClick={() => navigate("/existing-user")}
           >
-            Existing User
+            Login
           </Button>
-          <Button
-            variant="outlined"
-            sx={{
-              borderColor: "#1976d2",
-              color: "#1976d2",
-              borderRadius: "50px",
-              padding: "1rem",
-              fontSize: "1rem",
-              '&:hover': {
-                backgroundColor: "#1976d2",
-                color: "#fff"
-              }
-            }}
-            onClick={() => navigate("/players")}
-          >
-            Players
-          </Button>
+
         </Box>
       </Container>
     </Box>

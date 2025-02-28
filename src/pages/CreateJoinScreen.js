@@ -4,23 +4,27 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useLeague } from "../LeagueContext";
 
-const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
+const CreateJoinScreen = ({ onLeagueChosen }) => {
+  
+  const { userId, users, handleLogout } = useLeague();
   const [leagues, setLeagues] = useState([]);
   const [leagueName, setLeagueName] = useState("");
   const [creatingLeague, setCreatingLeague] = useState(false);
   const navigate = useNavigate();
 
+
+  console.log("Current User ", userId);
   // Fetch user's leagues
   useEffect(() => {
     const fetchUserLeagues = async () => {
-      if (!currentUser?.id) {
+      if (!userId) {
         console.error("❌ currentUserId is undefined, skipping query.");
         return;
       }
       const { data, error } = await supabase
         .from("league_rosters")
         .select("league_id, leagues(league_name), team_name")
-        .eq("user_id", currentUser.id);
+        .eq("user_id", userId);
 
       if (error) {
         console.error("Error fetching user leagues:", error);
@@ -33,7 +37,7 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
       }
     };
     fetchUserLeagues();
-  }, [currentUser]);
+  }, [userId]);
 
   // Create a league
   const handleCreateLeague = async () => {
@@ -44,7 +48,7 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
 
     const { data, error } = await supabase
       .from("leagues")
-      .insert([{ league_name: leagueName, commissioner_id: currentUser.id }])
+      .insert([{ league_name: leagueName, commissioner_id: userId }])
       .select()
       .single();
 
@@ -54,7 +58,7 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
       return;
     }
     console.log("User Leagues ", leagues);
-    navigate("/league-setup", { state: { mode: "create", leagueName, leagueId: data.league_id, userId: currentUser.id, leagues } });
+    navigate("/league-setup", { state: { mode: "create", leagueName, leagueId: data.league_id, userId: userId, leagues } });
   };
 
   // Join a league
@@ -65,89 +69,8 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
       console.error("Error fetching leagues:", error);
       return;
     }
-    navigate("/league-setup", { state: { mode: "join", userId: currentUser.id, leagues } });
+    navigate("/league-setup", { state: { mode: "join", userId: userId, leagues } });
   };
-/*
-  return (
-    <Box
-      sx={{
-        height: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#1E1E1E",
-        padding: 3,
-      }}
-    >
-      <Container
-        maxWidth="sm"
-        sx={{
-          backgroundColor: "#333",
-          borderRadius: "16px",
-          padding: "2rem",
-          textAlign: "center",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-          color: "#fff",
-        }}
-      >
-        <Typography variant="h4" gutterBottom>
-          🏆 Your Current Leagues
-        </Typography>
-        {leagues.length === 0 ? (
-          <Typography>No leagues found. Create or join a league.</Typography>
-        ) : (
-          <List>
-            {leagues.map((league) => (
-              <ListItem key={league.id} disablePadding>
-                <ListItemButton
-                  onClick={() => {
-                    onLeagueChosen(league.id);
-                    navigate("/players");
-                  }}
-                >
-                  <ListItemText sx={{ textAlign: "center", color:"white" }} primary={league.name} secondary={league.team_name} />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-        )}
-
-        {creatingLeague ? (
-          <Box sx={{ mt: 2 }}>
-            <TextField
-              label="Enter League Name"
-              variant="outlined"
-              fullWidth
-              value={leagueName}
-              onChange={(e) => setLeagueName(e.target.value)}
-              sx={{ marginBottom: 2, backgroundColor: "#555", color: "#fff" }}
-              InputLabelProps={{ style: { color: '#aaa' } }}
-            />
-            <Button variant="contained" onClick={handleCreateLeague} fullWidth>
-              Create League
-            </Button>
-          </Box>
-        ) : (
-          <Button
-            variant="outlined"
-            sx={{ mt: 2, color: "#4CAF50", borderColor: "#4CAF50" }}
-            onClick={() => setCreatingLeague(true)}
-          >
-            Create a League
-          </Button>
-        )}
-
-        <Button
-          variant="outlined"
-          sx={{ mt: 2, color: "#4CAF50", borderColor: "#4CAF50" }}
-          onClick={handleJoinLeague}
-        >
-          Join a League
-        </Button>
-      </Container>
-    </Box>
-  );
-*/
 
   return (
     <div>
@@ -206,6 +129,10 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
           <Button className="action-btn" onClick={handleJoinLeague}>
             Join a League
           </Button>
+
+          <Button className="action-btn" onClick={handleLogout}>
+            Logout
+        </Button>
         </div>
       </div>
 
@@ -266,7 +193,7 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
         }
                 
         .league-item:hover {
-          background: rgba(12, 46, 32, 0.8); /* ✅ Slight green tint on hover */
+          background: rgba(170, 240, 211, 0.8); /* ✅ Slight green tint on hover */
           box-shadow: 0 6px 15px rgba(0, 255, 127, 0.4); /* ✅ Enhanced glow */
         }        
 
@@ -285,7 +212,7 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
           color: black;
           padding: 20px;
           border-radius: 12px;
-          box-shadow: 5px 5px 15px rgba(0, 255, 127, 0.2), -5px -5px 15px rgba(0, 255, 127, 0.1);
+          box-shadow: 5px 5px 15px r#62FCDA, -5px -5px 15px #62FCDA;
         }
 
         .league-input {
@@ -302,30 +229,46 @@ const CreateJoinScreen = ({ currentUser, onLeagueChosen }) => {
           padding: 12px 24px; /* ✅ Adds more height & width */
           font-weight: bold;
           font-size: 1rem;
-          box-shadow: 0 10px 10px rgba(0, 255, 127, 0.3); /* ✅ Subtle glow effect */
+          box-shadow: 0 4px 10px #62FCDA; /* ✅ Subtle glow effect */
         }
 
         .action-btn:hover {
-          background: darkgreen;
-          color: white;
+          background: #62FCDA;
+          color: black;
           border-color: darkgreen;
         }
 
         .confirm-btn {
-          background: kellygreen;
+          background: "#62FCDA";
           color: black;
           border-radius: 30px; /* ✅ Ensures oblong shape */
           padding: 12px 24px;
           font-weight: bold;
           font-size: 1rem;
-          box-shadow: 0 4px 10px rgba(0, 255, 127, 0.3);
+          box-shadow: 0 4px 10px #62FCDA;
         }
 
         .confirm-btn:hover {
-          background: darkgreen;
-          color: white;
+          background: "#62FCDA";
+          color: black;
           border-color: darkgreen;
         }
+
+        .logout-btn {
+          background: red;
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          font-size: 1rem;
+          cursor: pointer;
+          border-radius: 5px;
+          margin-top: 15px;
+        }
+
+        .logout-btn:hover {
+          background: darkred;
+        }
+
       `}</style>
     </div>
   );

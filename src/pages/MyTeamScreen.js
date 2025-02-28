@@ -16,8 +16,24 @@ const MyTeamScreen = ({playersBase}) => {
   console.log("Checking league participants before update ", leagueParticipants, userId, users);
   console.log("Current User Data ", currentUserData);
 
-  const teamName = leagueParticipants.find((m) => m.user_id === userId).team_name || {};
-  const userName = users.find((m) => m.id === userId).user_name || {};
+  let teamName, userName;
+
+  const teamNameArray = leagueParticipants.find((m) => m.user_id === userId) || {};
+  if (teamNameArray) {
+      teamName = teamNameArray.team_name;
+  }else{
+      teamName = "Team Name";
+  }
+
+  const userNameArray = users.find((m) => m.id === userId) || {};
+  if (userNameArray) {
+      userName = userNameArray.user_name;
+  }else{
+      userName = "Team Name";
+  }
+
+//  const teamName = leagueParticipants.find((m) => m.user_id === userId).team_name || {};
+//  const userName = users.find((m) => m.id === userId).user_name || {};
   console.log("TeamName and userName ", teamName, userName);
   const teamRecord = "5-12-0"; // Randomized W-L-T record
   const totalPoints = "1425"; // Randomized total points
@@ -25,8 +41,9 @@ const MyTeamScreen = ({playersBase}) => {
   const fetchPlayers = async () => {
     try{
       let seasonTeamData, matchData, error1, error2;
-      let currentRoster
-      currentRoster = leagueParticipants.find((m) => m.user_id === userId).roster;
+      let currentRoster, currentRosterArray;
+      currentRosterArray = leagueParticipants.find((m) => m.user_id === userId);
+      currentRoster = currentRosterArray.roster;
       console.log("Current Roster is ", currentRoster);
       console.log("Start of MyTeam Filter for: ", statsFilter);
       /*

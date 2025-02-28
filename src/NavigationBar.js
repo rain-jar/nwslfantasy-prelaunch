@@ -7,7 +7,7 @@ import { AppBar, Toolbar, Button, Menu, MenuItem, Typography } from "@mui/materi
 const NavigationBar = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { users, userId, leagueId, userLeagues } = useLeague(); // Fetch user's leagues from context
+    const { users, userId, leagueId, userLeagues, handleLogout } = useLeague(); // Fetch user's leagues from context
     const [anchorEl, setAnchorEl] = useState(null);
     const [leagues, setAvailableLeagues] = useState ([]);
     const [isLoading, setLoading] = useState(true);
@@ -123,6 +123,15 @@ const NavigationBar = () => {
                     </MenuItem>
                     ))}
                 </Menu>
+
+                {userId && ( // ✅ Show Logout only if user is logged in
+                    <Button 
+                        color="inherit" 
+                        onClick={handleLogout}
+                    >   
+                    Logout
+                    </Button>
+                )}
 
                 {/* Styles */}
                 <style jsx>{`
