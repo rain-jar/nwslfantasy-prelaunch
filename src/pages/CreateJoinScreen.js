@@ -58,7 +58,7 @@ const CreateJoinScreen = ({ onLeagueChosen }) => {
       return;
     }
     console.log("User Leagues ", leagues);
-    navigate("/league-setup", { state: { mode: "create", leagueName, leagueId: data.league_id, userId: userId, leagues } });
+    navigate("/league-setup", { state: { mode: "create", leagueName, createLeagueId: data.league_id, userId: userId, leagues } });
   };
 
   // Join a league

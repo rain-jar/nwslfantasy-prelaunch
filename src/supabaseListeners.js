@@ -31,11 +31,13 @@ export const subscribeToLeagueRosterInserts = (setLeagueParticipants, leagueId) 
     const subscription = supabase
       .channel("league_rosters-insert")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "league_rosters" }, async(payload) => {
+        console.log("League Id at LeagueRosterInsert entry is ", leagueId);
         console.log("🆕 User joined league:", payload.new);
+        console.log("User joined league : ", payload.new.league_id);
         const { data, error } = await supabase
         .from("league_rosters")
         .select("*")
-        .eq("league_id", leagueId)
+        .eq("league_id", payload.new.league_id);
   
         if (!error) {
           setLeagueParticipants(data);

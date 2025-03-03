@@ -70,7 +70,11 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setCurrentUserId(null);
+    setCurrentLeagueId(null);
+    setUserLeagues(null);
     localStorage.removeItem("currentUserId");
+    localStorage.removeItem("currentLeagueId");
+    localStorage.removeItem("userLeagues");
     window.location.href = "/"; // ✅ Redirect to Welcome Screen
   };
 
@@ -80,6 +84,7 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
     if (currentUserId) {
       setCurrentUserId(currentUserId);
       localStorage.setItem("currentUserId", currentUserId);
+      console.log("Local Storage userId is set to ", currentUserId);
     }
   }, [currentUserId]);
 
@@ -87,6 +92,7 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
     if (currentLeagueId) {
       setCurrentLeagueId(currentLeagueId);
       localStorage.setItem("currentLeagueId", currentLeagueId);
+      console.log("Local Storage leagueId is set to ", currentLeagueId);
     }
   }, [currentLeagueId]);
 
@@ -129,15 +135,17 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
         }));
         setUserLeagues(formattedLeagues);
         localStorage.setItem("userLeagues", JSON.stringify(formattedLeagues)); // ✅ Store leagues in cache
+        console.log("User League set in LC");
       }
     };
 
     fetchLeagues();
-  }, [userId]);
+  }, [userId, leagueId]);
 
 
   useEffect(() => {
-      console.log("Leagueid ", leagueId);
+      console.log("Leagueid has changed to ", leagueId);
+      console.log("UserLeagues have changed to ", userLeagues);
       if (!leagueId) return;
 
       const lastFetch = localStorage.getItem("lastFetchTimestamp");
@@ -164,6 +172,7 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
             .eq("league_id", leagueId);
           if (!error && data) {
             setLeagueParticipants(data);
+            console.log("Setting new league participants ", data);
           }
         };
   
@@ -186,7 +195,7 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
         unsubscribeUpdates();
         unsubscribeRosterUpdates();
       };
-  }, [leagueId]);
+  }, [leagueId, userLeagues]);
   
 
   return (

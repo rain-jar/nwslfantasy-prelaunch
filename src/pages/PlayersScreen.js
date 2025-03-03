@@ -302,7 +302,7 @@ const PlayersScreen = ({playersBase}) => {
                       setOpenModal(true); // ✅ Open modal when row is clicked
                     }}
                     sx={{"&:hover": {backgroundColor: "kellygreen", color: "black"}}}>Add</Button></TableCell>
-                    <TableCell><img src={process.env.PUBLIC_URL + "/placeholder.png"} alt={player.name} className="player-img" /></TableCell>
+                    <TableCell><img src={player.image_url || process.env.PUBLIC_URL + "/placeholder.png"} alt={player.name} className="player-img"   onError={(e) => { e.target.onerror = null; e.target.src = process.env.PUBLIC_URL + "/placeholder.png"; }}/></TableCell>
                     <TableCell>{player.name}</TableCell>
                     <TableCell>{player.team}</TableCell>
                     <TableCell>{player.position}</TableCell>

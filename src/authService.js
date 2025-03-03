@@ -62,5 +62,5 @@ export const loginUser = async (email, password) => {
   }
 
   // Step 3: Return user data
-  return { success: true, user: userProfile };
+  return { success: true, user: userProfile, userId: userId };
 };

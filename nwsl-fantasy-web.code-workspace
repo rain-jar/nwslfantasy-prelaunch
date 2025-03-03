@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../NWSLFantasy"
+		},
+		{
+			"path": "../nwsl-landing-site"
 		}
 	],
 	"settings": {}

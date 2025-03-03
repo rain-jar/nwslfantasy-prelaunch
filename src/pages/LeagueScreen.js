@@ -22,7 +22,11 @@ const LeagueScreen = () => {
 
     let leagueName;
 
+    console.log("League Participants are ", leagueParticipants);
+
     const leagueNameArray = userLeagues.find((participant) => participant.id === leagueId);
+    console.log("League Name ", leagueNameArray);
+    console.log("UserLeagues in LeagueScreen ", userLeagues, leagueId)
     if (leagueNameArray) {
         leagueName = leagueNameArray.name;
     }else{

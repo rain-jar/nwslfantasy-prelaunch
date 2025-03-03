@@ -153,7 +153,7 @@ const DraftScreen = ({playersBase}) => {
           setCurrentRound(data[0].current_round);
           setCurrentPick(data[0].current_pick);
           setDraftOrder(data[0].draft_order); // Default to teams if empty
-          console.log("Fetch State on App.tsx render ", data, "Current pick: ", data.current_pick, " Current Round: ", data.current_round)
+          console.log("Fetch State on App.tsx render ", data, "Current pick: ", data[0].current_pick, " Current Round: ", data[0].current_round, "Draft Order ", data[0].draft_order);
           }
         } catch (err) {
           console.log("🔥 Unexpected fetch error:", err);
@@ -178,7 +178,8 @@ const DraftScreen = ({playersBase}) => {
 
     // Helper Functions
     const nextTurn = async() => {
-        console.log("currentPick: ",currentPick," currentRound: ",currentRound)
+        console.log("currentPick: ",currentPick," currentRound: ",currentRound);
+        console.log("Draft Order inside Next Turn ", draftOrder);
         let newPick = currentPick;
         let newRound = currentRound;
         let newDraftOrder = [...draftOrder];
@@ -289,10 +290,13 @@ const DraftScreen = ({playersBase}) => {
     //    if (success) {
 
                 // **Fetch current roster**
-            
+            console.log("Current Pick before assigning currentRoster ", draftOrder[currentPick]);
+            console.log("Current League Participants ", leagueParticipants);
             const currentRoster = leagueParticipants.find((participant) => participant.team_name == draftOrder[currentPick].team_name).roster;
 
-              // ** Append new player**
+
+            console.log("Roster before updating with draft player ", currentRoster);
+            // ** Append new player**
             const updatedRoster = [...currentRoster, player];
 
             const { error } = await supabase
@@ -336,7 +340,7 @@ const DraftScreen = ({playersBase}) => {
                 //onNotify([...currentTeam.roster]); 
             //onNotify((prevRoster) => [...prevRoster, player]); // Notify App about Team 1's updated roster
         // }
-            nextTurn();
+            await nextTurn();
             console.log('current Team is ' + draftOrder[currentPick].team_name);
            // setCurrentTeam(draftOrder[currentPick]); // Update current team
          //   onPick(player);
@@ -344,7 +348,9 @@ const DraftScreen = ({playersBase}) => {
     //    }
     };
 
-
+    console.log ("Current Pick : ", currentPick, "Current Round: ", currentRound);
+    console.log ("Draft Order ", draftOrder);
+    console.log ("League Participants ", leagueParticipants);
 
 
     return (
@@ -393,7 +399,7 @@ const DraftScreen = ({playersBase}) => {
                   <TableRow key={index}
                     sx={{ cursor: "pointer", "&:hover": { backgroundColor: "rgba(16, 86, 51, 0.1)" } }} // Hover effect for better UX
                   >
-                    <TableCell><img src={process.env.PUBLIC_URL + "/placeholder.png"} alt={player.name} className="player-img" /></TableCell>
+                    <TableCell><img src={player.image_url || process.env.PUBLIC_URL + "/placeholder.png"} alt={player.name} className="player-img"   onError={(e) => { e.target.onerror = null; e.target.src = process.env.PUBLIC_URL + "/placeholder.png"; }}/></TableCell>
                     <TableCell>{player.name}</TableCell>
                     <TableCell>{player.position}</TableCell>
                     <TableCell><Button className="add-btn" 

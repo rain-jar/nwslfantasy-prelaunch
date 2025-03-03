@@ -2,17 +2,21 @@ import React, { useState, useEffect } from "react";
 import { Box, Button, Typography, Container, TextField, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, Card, CardContent } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { useLeague } from "../LeagueContext";
 import {subscribeToLeagueInserts} from "../supabaseListeners";
 
 
 const LeagueSetupScreen = ({onLeagueChosen}) => {
   const location = useLocation();
-  const { mode, leagueName, leagueId, userId, leagues } = location.state;
+  const { leagueParticipants, setLeagueParticipants, leagueId} = useLeague();
+  
+  const { mode, leagueName, createLeagueId, userId, leagues } = location.state;
   const [teamName, setTeamName] = useState("");
   const [leagueType, setLeagueType] = useState("Standard H2H");
   const [availableLeagues, setAvailableLeagues] = useState([]);
   const [selectedLeague, setSelectedLeague] = useState(null);
   const navigate = useNavigate();
+  
 
   useEffect(() => {
     const unsubscribe = subscribeToLeagueInserts(setAvailableLeagues);
@@ -27,6 +31,14 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
       });
     }
   }, [mode]);
+
+  useEffect(() => {
+    if(mode === "join" && leagueId){
+      console.log("Redoing DraftState since LP has changed ", leagueParticipants);
+      console.log("Current League Id : ", leagueId );
+      reinitializeDraftState(leagueId);
+    }
+  }, [leagueParticipants, selectedLeague])
 
   const fetchAvailableLeagues = async (leagueList) => {
     const { data, error } = await supabase.from("leagues").select("*");
@@ -49,7 +61,7 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
     return leagueList || [];
   };
 
-  const initializeLeaguePlayers = async (leagueId) => {
+  const initializeLeaguePlayers = async (createLeagueId) => {
     try {
       // Fetch all player IDs from players_base
       const { data: players, error: fetchError } = await supabase
@@ -68,7 +80,7 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
   
       // Prepare batch insert data
       const leaguePlayersData = players.map((player) => ({
-        league_id: leagueId,
+        league_id: createLeagueId,
         player_id: player.id,
         onroster: false, // Default value
       }));
@@ -88,17 +100,111 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
     }
   };
 
+
+  const fetchLeagueParticipants = async (finalLeagueId) => {
+    const { participants, error } = await supabase
+      .from("league_rosters")
+      .select("*")
+      .eq("league_id", finalLeagueId);
+      if (!error && participants) {
+        setLeagueParticipants(participants);
+        console.log("Fetched and set latest leagueparticipants ")
+        return {success: true};
+      }else {
+        return { success: false};
+      }
+  };
+
+  const reinitializeDraftState = async (finalLeagueId) => {
+      const isUpdated = false;
+    try {
+      // Fetch all player IDs from players_base
+      console.log("League Id ", finalLeagueId);
+
+      const { participants, pError } = await supabase.from("league_rosters")
+      .select("*")
+      .eq("league_id", finalLeagueId);
+
+      if (!pError && participants) {
+        isUpdated = true;
+        console.log("Participants are ", participants);
+      }else{
+        console.log("❌ Error fetching leagueParticipants : ", pError);
+        console.log("❌ Participants ", participants);
+      }
+
+
+      console.log("Update state is ", isUpdated);
+
+
+      const { data, fetchError } = await supabase.from("draft_state")
+      .select("*")
+      .eq("id", finalLeagueId);
+  
+      if (fetchError) {
+        console.error("❌ Error fetching draftState while joining league : ", fetchError.message);
+        return;
+      }else{
+        console.log("Fetched draft-state is ", data[0]);
+      }
+  
+      if (!data || data.length === 0) {
+        console.log("⚠️ Draft is not set yet. So setting the draft state for the first time for League: ", finalLeagueId, data);
+        const { data: newData, error: insertError } = await supabase
+        .from("draft_state")
+        .insert([{ id: finalLeagueId, current_round: 1, current_pick: 0, draft_order: leagueParticipants }])
+        .select()
+        .single();
+
+        if (insertError) {
+          console.error("❌ Error inserting into draft_state while joining league:", insertError.message);
+        } else {
+          console.log("✅ Draft-State set while joining since it wasn't set yet. ", newData);
+        }
+
+      }else{
+      // Since the draft-state is already set, updating the draft order with latest teams. 
+        console.log("Since the draft-state is already set, updating the draft state with reinitialized state.")
+        const { data: newData, error: insertError } = await supabase
+              .from("draft_state")
+              .update({ current_round: 1, current_pick: 0, draft_order: leagueParticipants })
+              .eq("id", finalLeagueId)
+              .select()
+              .single();
+
+              if (insertError) {
+                console.error("Error re-initializing draft state while joining:", insertError);
+                return;
+              }else{
+                console.log("✅ Draft-State re-initialized with latest teams ",  newData, leagueParticipants);
+              }
+      }
+
+    } catch (err) {
+      console.error("🔥 Unexpected error initializing draft_state:", err);
+    }
+  };
+
+
   const handleConfirmSetup = async () => {
+
+   // let lpCheck ;
+    console.log("Mode is ", mode);
+    console.log("League Participants before confirming ", leagueParticipants);
     if (!teamName.trim()) {
       alert("Please enter a team name.");
       return;
     }
-    const finalLeagueId = mode === "create" ? leagueId : selectedLeague?.league_id;
+    const finalLeagueId = mode === "create" ? createLeagueId : selectedLeague?.league_id;
     if (!finalLeagueId) {
       alert("No league selected.");
       return;
     }
 
+    await onLeagueChosen(finalLeagueId);
+    console.log("Waiting for leagueId to change ");
+
+    console.log("League Id before inserting new user ", finalLeagueId);
     const { error } = await supabase.from("league_rosters").insert([
       {
         league_id: finalLeagueId,
@@ -113,16 +219,27 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
       alert("Failed to save league setup.");
       console.error("Supabase error:", error);
       return;
+    }else {
+
+      console.log("✅ League Table updated with latest User ");
+/*
+      if (!leagueParticipants || leagueParticipants.length === 0){
+        lpCheck = await fetchLeagueParticipants();
+      }
+
+      console.log("League Participants after confirming ", leagueParticipants);
+      */
     }
 
     if (mode === "create"){
-        await initializeLeaguePlayers(leagueId);
+        await initializeLeaguePlayers(createLeagueId);
       //  await (initializeLeagueDraftState(leagueId);
     }else{
-        console.error("Players table for this league is already setup");
+        console.log("Players table for this league is already setup because mode is : ", mode);
+        console.log("Checking and if needed re-initializing draft-state. Mode : ", finalLeagueId);
+        await reinitializeDraftState(finalLeagueId);
+        console.log("waited for draft-state reinitialization");
     }
-
-    await onLeagueChosen(finalLeagueId);
 
     navigate("/players");
   };
@@ -271,7 +388,10 @@ return (
                   <ListItem key={league.league_id} disablePadding>
                     <ListItemButton
                       className="league-item"
-                      onClick={() => setSelectedLeague(league)}
+                      onClick={() => {
+                        setSelectedLeague(league);
+                        console.log ("Selected League ", league.league_id);
+                      }}
                     >
                       <ListItemText primary={league.league_name} />
                     </ListItemButton>
