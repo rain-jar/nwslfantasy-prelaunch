@@ -64,7 +64,20 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
       const joinableLeagues = leagueList.filter((league) => !registeredLeagueIds.some((p) => p === league.league_id)
       );
       console.log("Joinable Leagues", joinableLeagues );
-      leagueList = [...joinableLeagues];
+      
+      const leagueUserCount = joinableLeagues.map( async(league) => {
+        const userCount = await fetchLeagueUserCount(league.league_id);
+       // console.log("leagueUserCount ", league.league_id, userCount.data);
+        return {...league, 
+          userCount : userCount?.data};
+      })
+
+      const resolvedLeagues = await Promise.all(leagueUserCount);
+
+      console.log("Joinable Leagues with user count ", resolvedLeagues);
+
+
+      leagueList = [...resolvedLeagues];
     } catch (err) {
       console.error("🔥 Unexpected fetch error:", err);
     }
@@ -110,6 +123,23 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
     }
   };
 
+  const fetchLeagueUserCount = async(leagueIdParam) => {
+    try{
+      console.log("Going to fetch league user count ", leagueIdParam);
+      const { data : playerCountFetch, error } = await supabase.from("league_rosters")
+        .select("*")
+        .eq("league_id", leagueIdParam);
+        if (!error) {
+          console.log("Fetched latest userCountData ", playerCountFetch);
+          return {success: true, data: playerCountFetch?.length};
+        }else {
+          console.log(" Didn't fetch userCountData ");
+          return { success: false, data: null};
+        }
+    }catch(err){
+      console.log("🔥 Unexpected fetch error while fetching userCountData:", err);
+    }
+  }
 
   const fetchLeagueParticipants = async (finalLeagueId) => {
     try{
@@ -313,7 +343,7 @@ return (
                       //  console.log("isRechecking ", isReChecking);
                       }}
                     >
-                      <ListItemText primary={league.league_name} />
+                      <ListItemText primary={league.league_name} secondary={`League spots filled: ${league.userCount}/10`} />
                     </ListItemButton>
                   </ListItem>
                 ))}
