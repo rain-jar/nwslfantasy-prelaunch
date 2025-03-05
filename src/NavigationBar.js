@@ -45,7 +45,7 @@ const NavigationBar = () => {
 
     if(isLoading) return null;
 */
-    console.log("User Leagues in Navigation ", userLeagues, users, leagueId, userId);
+   // console.log("User Leagues in Navigation ", userLeagues, users, leagueId, userId);
     //const userName = users.find((m) => m.id === userId).user_name;
    // const leagueName = userLeagues.find((m) => m.id === leagueId).name;
 

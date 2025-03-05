@@ -4,8 +4,6 @@ import NavigationBar from "../NavigationBar";
 import { useLeague } from "../LeagueContext";
 import { supabase } from "../supabaseClient";
 import {subscribeToDraftUpdates} from "../supabaseListeners";
-import { useRef } from "react";
-
 
 const DraftScreen = ({playersBase}) => {
 
@@ -22,24 +20,6 @@ const DraftScreen = ({playersBase}) => {
     const [currentPick, setCurrentPick] = useState(0);
     const [draftOrder, setDraftOrder] = useState([users]);
     const [isDrafting, setIsDrafting] = useState(false); 
-    const isDraftingRef = useRef(false); // ✅ Instant update for isDrafting
-
-    //Timer State variables. 
-    const [timer, setTimer] = useState(30); // 30-second countdown
-    const [isPaused, setIsPaused] = useState(false);
-    let timerInterval = null; // To store the interval reference
-    const hasTimerStarted = useRef(false); // ✅ Track whether timer has started
-    const isDraftStarted = useRef(false);
-    const timerRef = useRef(null); // ✅ Persist timer reference
-    const [draftingMessage, setDraftingMessage] = useState("");
-    const draftingMessageRef = useRef("");
-    let autoDraftTimeout = null; // Store timeout reference
-    let isAutoDrafting = false; // Track if auto-draft is in progress
-
-
-
-
-
     
 
 
@@ -55,56 +35,14 @@ const DraftScreen = ({playersBase}) => {
  //   const currentRound = 1; // Placeholder for now
     const playersLeft = 30; // Placeholder for now
     const userTurn = false; // Placeholder - will be dynamic later
-    /*
     console.log("Available Players ", availablePlayers);
     console.log("Players ", players);
     console.log("filteredPlayers ", filteredPlayers);
-    */
 
     useEffect(() => {
         const unsubscribe = subscribeToDraftUpdates(setCurrentRound, setCurrentPick, setDraftOrder);
         return () => unsubscribe();
     }, []);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            //console.log("Drafting Message timer");
-            setDraftingMessage(draftingMessageRef.current);
-        }, 20); // ✅ Poll ref value to update UI without excessive re-renders
-        return () => clearInterval(interval);
-    }, []);
-
-    //Starting Draft-Timer When Pick Updates
-    useEffect(() => {
-        console.log("🔥 Checking if timer should start");
-        console.log("Current Top Player is ", filteredPlayers[0]);
-    
-        hasTimerStarted.current = false;  
-        draftingMessageRef.current = "";  
-    
-        // ✅ Clear existing timer when pick changes (prevents previous user from seeing active timer)
-        if (timerRef.current) {
-            console.log("🛑 Clearing old timer as pick changed");
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-            setTimer(30); // ✅ Reset UI timer instantly
-        }
-    
-        const timeout = setTimeout(() => {
-            if (!isPaused && draftOrder[currentPick]?.user_id === userId) {
-                console.log("🔥 Starting timer for current user");
-                hasTimerStarted.current = true;
-                startDraftTimer();
-            } else {
-                console.log("⏳ Not your turn, timer will not start. Message from useEffect");
-            }
-        }, 5000);
-    
-        return () => clearTimeout(timeout);
-    }, [currentPick]);
-    
-    
-
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -222,92 +160,9 @@ const DraftScreen = ({playersBase}) => {
         }
     }; 
 
-    //Defining startDraftTimer Function
-    const startDraftTimer = () => {
-        draftingMessageRef.current = ""; // ✅ Clear message when timer actually starts
-
-        if (draftOrder[currentPick]?.user_id !== userId) {
-            draftingMessageRef.current = ""; // ✅ Clear message when timer actually starts
-            console.log("⏳ Not your turn, timer will not start. Current turn is for :", draftOrder[currentPick]?.team_name);
-            return; // ✅ Exit if it's not the user's turn
-        }
-
-        console.log("🔥 Starting new draft timer");
-    
-        if (timerRef.current) clearInterval(timerRef.current); // ✅ Ensure only one timer runs
-    
-        setTimer(30); // Reset timer
-    
-        timerRef.current = setInterval(() => {
-            setTimer((prevTime) => {
-                if (prevTime <= 1) {
-                    clearInterval(timerRef.current);
-                    timerRef.current = null; // ✅ Prevent lingering intervals
-                    console.log("🔥 Calling autoDraft from startDraftTimer");
-                    autoDraft();
-                    return 0;
-                }
-                return prevTime - 1;
-            });
-        }, 1000);
-    };
-
-    
-    const autoDraft = async () => {
-        if (isAutoDrafting) {
-            console.log("🚨 Skipping duplicate autoDraft call!");
-            return;
-        }
-    
-        isAutoDrafting = true; // ✅ Mark auto-draft as in progress
-        console.log("🔥 autoDraft function called at:", new Date().toISOString());
-    
-        if (isDraftingRef.current) {
-            console.log("🔥 Resetting isDrafting for back-to-back picks.");
-            isDraftingRef.current = false; // ✅ Reset before proceeding
-            setIsDrafting(false);
-            await new Promise((resolve) => setTimeout(resolve, 50)); 
-        }
-    
-        if (draftOrder[currentPick]?.user_id !== userId) {
-            console.log("Autodraft is returning because it's not your turn");
-            isAutoDrafting = false;
-            return;
-        }
-    
-        console.log("Auto-picking for", draftOrder[currentPick].team_name);
-        draftingMessageRef.current = "Drafting... Please wait";
-    
-        const topPlayer = filteredPlayers[1];
-        if (!topPlayer) {
-            console.log("No players left to auto-draft");
-            isAutoDrafting = false;
-            return;
-        }
-    
-        console.log("Auto-drafting ", topPlayer.name);
-    
-        if (autoDraftTimeout) clearTimeout(autoDraftTimeout);
-    
-        autoDraftTimeout = setTimeout(() => {
-            console.log("🔥 Executing handleDraft in autoDraft");
-    
-            isDraftingRef.current = false; // ✅ Ensure it's reset before handling draft
-            setIsDrafting(false); // ✅ Reset again before calling handleDraft()
-            handleDraft(topPlayer);
-            
-            autoDraftTimeout = null;
-            isAutoDrafting = false; 
-        }, 5000);
-    };
-    
-    
-
-/*
     console.log("Draft Order team ", draftOrder[currentPick].team_name);
     console.log("Roster is ", draftOrder[currentPick]);
     console.log("Loading ", loading);
-*/
 
 // Position Constraints
 
@@ -317,11 +172,9 @@ const DraftScreen = ({playersBase}) => {
 
 
     const currentTeam = draftOrder[currentPick];
-/*
+
     console.log ("Current Team in DraftScreen is ", currentTeam);
     console.log ("Test ", userLeagues, leagueId);
-*/
-
 
     // Helper Functions
     const nextTurn = async() => {
@@ -407,37 +260,21 @@ const DraftScreen = ({playersBase}) => {
 
 
     const handleDraft = async(player) => {
-        if (isDraftingRef.current) {
-            console.log("Returning from handleDraft because isDrafting is:", isDraftingRef.current);
-            return;
-        }
-    
-        isDraftingRef.current = true; // ✅ Immediately block duplicate drafts
+        if (isDrafting) return; // Prevent duplicate drafts
+        setIsDrafting(true);
 
-        setIsDrafting(true); // ✅ Sync with state
-
-
-        draftingMessageRef.current = "Drafting... Please wait"; // ✅ Instant update
         console.log("Drafting team is "+ draftOrder[currentPick].team_name);
 
         if (userId != draftOrder[currentPick].user_id){
             console.log ("It's not the current user's turn");
             setdraftTurn(true);
-            isDraftingRef.current = false; 
             setIsDrafting(false);
             return false;
         }
-
-        //Stopping Timer since Draft button was clicked. 
-        clearInterval(timerInterval); // Stop the timer on manual draft
-        setTimer(30); // Reset timer for next pick
-      //  isDraftStarted.current = true;  // ✅ Mark draft as started when first draft is made
-
         const team = teams.find(t => t.id === draftOrder[currentPick].user_id);
 
         if (!team || player.onroster || !isValidPick(team, player)) {
             console.log(`Invalid pick: ${player.name}`);
-            isDraftingRef.current = false; 
             setIsDrafting(false);
             return false;
         }
@@ -507,19 +344,13 @@ const DraftScreen = ({playersBase}) => {
             console.log('current Team is ' + draftOrder[currentPick].team_name);
            // setCurrentTeam(draftOrder[currentPick]); // Update current team
          //   onPick(player);
-
-            isDraftingRef.current = false; // ✅ Unlock drafting immediately
-
             setIsDrafting(false);
-
     //    }
     };
 
-    /*
     console.log ("Current Pick : ", currentPick, "Current Round: ", currentRound);
     console.log ("Draft Order ", draftOrder);
     console.log ("League Participants ", leagueParticipants);
-    */
 
 
     return (
@@ -532,12 +363,6 @@ const DraftScreen = ({playersBase}) => {
                 <Typography variant="h5" className="draft-league-name">{leagueName}</Typography>
                 <Typography variant="h6" className="draft-details">Drafting Team : {draftOrder[currentPick].team_name} |  Round: {currentRound} | Players Left: {availablePlayers.length}
                 </Typography>
-                <Typography variant="h6" className="draft-league-name">Time Left: {timer}s</Typography>
-                {draftingMessage && <Typography variant="h6">{draftingMessage}</Typography>}
-                {timer === 30 ? (
-                    <Typography variant="h6">{draftOrder[currentPick].team_name} is drafting. Please wait for your turn</Typography>) : null}
-
-
               {/*  <Typography variant="h6" className="draft-status">
                  It is the turn of : {draftOrder[currentPick].team_name}
                 {userTurn ? "Your Turn to Pick" : "Waiting for Other Picks..."}
