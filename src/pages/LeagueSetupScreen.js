@@ -289,7 +289,6 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
         await reinitializeDraftState(finalLeagueId, fetchParticipant.data);
         console.log("waited for draft-state reinitialization");
         localStorage.setItem("newUserJoined", "true");
-
     }
 
     navigate("/players");
