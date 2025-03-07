@@ -7,10 +7,11 @@ import {subscribeToDraftUpdates} from "../supabaseListeners";
 import { useRef } from "react";
 
 
+
 const DraftScreen = ({playersBase}) => {
 
     const { availablePlayers, setAvailablePlayers, leagueId, users, userId, userLeagues } = useLeague();
-    const { leagueParticipants, setLeagueParticipants, timerStart} = useLeague();
+    const { leagueParticipants, setLeagueParticipants} = useLeague();
     const [positionFilter, setPositionFilter] = useState("All");
     
     const [players, setPlayers] = useState([...availablePlayers]);
@@ -25,20 +26,20 @@ const DraftScreen = ({playersBase}) => {
     const isDraftingRef = useRef(false); // ✅ Instant update for isDrafting
 
     //Timer State variables. 
-    const [timer, setTimer] = useState(20); // 20-second countdown
+    const [timer, setTimer] = useState(90); // 90-second countdown
     const [isPaused, setIsPaused] = useState(false);
     let timerInterval = null; // To store the interval reference
     const hasTimerStarted = useRef(false); // ✅ Track whether timer has started
     const isDraftStarted = useRef(false);
-    const timerRef = useRef(null); // ✅ Persist timer reference
     const [draftingMessage, setDraftingMessage] = useState("");
     const draftingMessageRef = useRef("");
     let autoDraftTimeout = null; // Store timeout reference
     let isAutoDrafting = false; // Track if auto-draft is in progress
-    const lastProcessedPick = useRef(null);
-    const lastProcessedTimerStart = useRef(null);
+    const { timerRef } = useLeague(); // ✅ Use shared timerRef
 
+    const safeTimerRef = timerRef ?? { current: null }; // ✅ Use fallback object if timerRef is undefined
 
+    console.log("✅ TimerRef:", safeTimerRef.current);
 
     const positions = ["All", "FW", "MF", "DF", "GK"];
     let leagueName;
@@ -50,7 +51,7 @@ const DraftScreen = ({playersBase}) => {
         leagueName = "Fantasy League";
     }
  //   const currentRound = 1; // Placeholder for now
-    const playersLeft = 30; // Placeholder for now
+    const playersLeft = 20; // Placeholder for now
     const userTurn = false; // Placeholder - will be dynamic later
     /*
     console.log("Available Players ", availablePlayers);
@@ -71,95 +72,108 @@ const DraftScreen = ({playersBase}) => {
         return () => clearInterval(interval);
     }, []);
 
-    //Updating Draft-Timer --> When Pick Updates or when user navigate or refreshes the page. 
+    //Starting Draft-Timer When Pick Updates
     useEffect(() => {
-        if (!timerStart || !draftOrder[currentPick]?.user_id) {   
-            console.log("Returning due to either ", timerStart, " or ", draftOrder[currentPick]?.user_id);         
-            return;
-        }
+
+        const fetchandsetWaiter = async() => {
+
+            console.log("🔥 Checking if timer should start");
+            //  console.log("Current Top Player is ", filteredPlayers[0]);
+          
+            hasTimerStarted.current = false;  
+            draftingMessageRef.current = "";  
+            console.log("DraftState Id before checking for a timer in useEffect ", draftStateId);
+      
+            if (!draftStateId) {
+                console.log("⏳ Waiting for draftStateId before fetching timer...");
+                return; // ✅ Exit early if draftStateId is not yet available
+            }
+    
         
-        console.log("Current pick ", currentPick, "Timer Start ", timerStart);
-        console.log("LastProcessed Pick ", lastProcessedPick.current);
-        console.log("LastProcessedTimer ", lastProcessedTimerStart.current);
-        console.log("League Participants is ", leagueParticipants);
+            const fetchTimer = async () => {
+                console.log("Fetch Timer called");
+    
+                // ✅ First, check if a timer is already running in Supabase
+                const { data, error } = await supabase
+                    .from("draft_state")
+                    .select("timer, timer_start")
+                    .eq("id", draftStateId)
+                    .single();
+    
+                if (error || !data) {
+                    console.log("⚠️ No timer data found in Supabase, starting fresh.");
+                } else {
+                    console.log("Data received, retrieving timer in fetch timer");
+                    const timerStartUTC = (new Date(data.timer_start).getTime() / 1000); // ✅ Convert to UTC timestamp
+                    const currentTimeUTC = (new Date().getTime()/1000); // ✅ Get current time in GMT
 
-    // ✅ Allow the effect to run if timerStart has changed, even if currentPick is the same
-        const isNewPick = lastProcessedPick.current !== currentPick;
-        const isNewTimerStart = lastProcessedTimerStart.current !== timerStart;
-
-        console.log("Going into UseEffect ", isNewPick, isNewTimerStart);
-
-            // ✅ Prevent duplicate runs only if both values are unchanged
-        if (!isNewPick && !isNewTimerStart) {
-            console.log("⏳ Skipping redundant timer update - Pick:", currentPick, "Timer Start:", timerStart);
-            // 🔥 Force re-sync timer if the user navigated away and returned
-            const elapsedTime = Math.floor((Date.now() - Date.parse(timerStart)) / 1000);
-            const remainingTime = Math.max(20 - elapsedTime, 0);
-            console.log ("Elapsed Time : ", elapsedTime, " And Remaining Time : ", remainingTime);
-            console.log("Current Pick is ", draftOrder[currentPick].user_id, draftOrder[currentPick].team_name);
-
-            if (draftOrder[currentPick]?.user_id !== userId) {
-                console.log("👀 User is NOT the drafter, setting timer to 20s.");
-                setTimer(20); // ✅ Other users always see 20s
-                return;
+                    const elapsedTime = Math.floor((currentTimeUTC - timerStartUTC)/1000); // ✅ Use UTC difference
+                    const remainingTime = Math.max(0, data.timer - elapsedTime);
+                    console.log("Remaining time is ", remainingTime,"Timer :", data.timer, "Timer start was : ", data.timer_start);
+                    console.log("Timer start (UTC):", timerStartUTC);
+                    console.log("Current time (UTC):", currentTimeUTC);
+                    console.log("Elapsed Time (Seconds):", elapsedTime);
+                    console.log("Remaining Time:", remainingTime);
+    
+                    if (remainingTime > 0) {
+                        console.log("⏳ Timer is already running in Supabase, resuming from:", remainingTime);
+                        console.log("🕒 Current TimerRef Value: ", timerRef.current);
+                        setTimer(remainingTime);
+    
+                        // ✅ If timer has already started, prevent restarting it
+                        hasTimerStarted.current = remainingTime > 0 && remainingTime < 90;
+                        console.log("hasTimerStarted ", hasTimerStarted.current);
+            
+                        // ✅ Ensure Supabase is also updated immediately
+                        await supabase
+                        .from("draft_state")
+                        .update({ timer: remainingTime })
+                        .eq("id", draftStateId);
+    
+                        return; // ✅ Do NOT start a new timer if one is active
+                    }
+                }
+            };
+          
+            await fetchTimer();
+            console.log("Awaiting fetching data");
+      
+            // ✅ Clear existing timer when pick changes (prevents previous user from seeing active timer)
+            if (timerRef.current) {
+                console.log("🛑 Clearing old timer as pick changed");
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+                setTimer(90); // ✅ Reset UI timer instantly
             }
 
-        }
+            //Start the timer after clear intervals and confirming there is a need for a new timer. 
+            const timeout = setTimeout(() => {
+                if (!isPaused && draftOrder[currentPick]?.user_id === userId && !hasTimerStarted.current) {
+                    console.log("🔥 Starting timer for current user");
+                    hasTimerStarted.current = true;
+                    startDraftTimer();
+                } else {
+                    console.log("⏳ Not your turn, timer will not start. Message from useEffect");
+                }
+            }, 5000);
+        
+            return () => clearTimeout(timeout);
 
-        console.log("Setting the latest values for pick and time start");
-        lastProcessedPick.current = currentPick;
-        lastProcessedTimerStart.current = timerStart; // ✅ Ensure the latest timerStart is always used
+        };
 
-        console.log("🕒 Before Calculation : TimeStart", timerStart, "CurrentTime : ", new Date().toISOString());
-        console.log("Checking for time : Current Time :", Date.now(), "TimerStart :", Date.parse(timerStart));
+        fetchandsetWaiter();
 
-        // ✅ Determine if the timer should start fresh or resume from stored timerStart
-        const isUserTurn = draftOrder[currentPick]?.user_id === userId;
-        const elapsedTime = Math.floor((Date.now() - Date.parse(timerStart)) / 1000);
-        const remainingTime = Math.max(20 - elapsedTime, 0); // Ensure it never goes negative
-        console.log("Current Pick is ", draftOrder[currentPick].team_name, draftOrder[currentPick]);
-        console.log("🕒 Timer Logic - User Turn:", isUserTurn, "Elapsed Time:", elapsedTime, "Remaining Time:", remainingTime);
+    }, [currentPick, draftStateId]); // ✅ Runs when draft progresses OR user navigates back
     
-        // ✅ Clear any existing timers before setting a new one
-        if (timerRef.current) clearInterval(timerRef.current);
     
-        if (isUserTurn) {
-            if (elapsedTime >= 20) {
-                console.log("⏳ Timer expired, auto-resetting...");
-                setTimer(20);
-            //    autoDraft(); // Auto-draft if timer has fully elapsed
-            }/* else {*/
-                console.log("🔥 Starting draft timer from", remainingTime, "seconds.");
-                setTimer(remainingTime);
-                timerRef.current = setInterval(() => {
-                    setTimer((prevTime) => {
-                        if (prevTime <= 1) {
-                            clearInterval(timerRef.current);
-                            console.log("⏳ Timer ran out, auto-drafting...");
-                            autoDraft();
-                            return 0;
-                        }
-                        return prevTime - 1;
-                    });
-                }, 1000);
-            //}
-        } else {
-            console.log("⏳ Not user's turn, timer will not start.");
-            setTimer(20); // Ensure UI shows correct remaining time but does not start a timer
-        }
-    
-        return () => clearInterval(timerRef.current);
-    }, [timerStart, currentPick, draftOrder]); // ✅ Runs when `timerStart` or `currentPick` updates
-    
-
 
     useEffect(() => {
         const fetchInitialData = async () => {
             setLoading(true); 
             await fetchDraftState();
-            console.log("DraftScreen fetches draft state - currentPick:", currentPick, " currentRound:", currentRound);
+           // console.log("DraftScreen fetches draft state - currentPick:", currentPick, " currentRound:", currentRound);
             setLoading(false);
-            console.log(" Loading inside Initial fetches", loading);
+          //  console.log(" Loading inside Initial fetches", loading);
         };
     
         fetchInitialData();
@@ -168,19 +182,19 @@ const DraftScreen = ({playersBase}) => {
 
     useEffect(() => {
         const fetchData = async () => {
-     //       console.log("Calling Filters due to filter change");
+       //     console.log("Calling Filters due to filter change");
             await filterPlayers();
         };
         fetchData();
     }, [positionFilter, players]);
 
     useEffect(() => {
-      //  console.log("After listening to the PlayerUpdate listener ", loading);
+    //    console.log("After listening to the PlayerUpdate listener ", loading);
         const fetchMergedData = async() => {
             if (!loading && availablePlayers?.length > 0) {
-       //         console.log("Fetched Available Players from Listener ", availablePlayers);
+    //            console.log("Fetched Available Players from Listener ", availablePlayers);
                 await mergeFunc();
-       //         console.log("Did you wait for FilterPlayers in MergeFunc?");
+    //            console.log("Did you wait for FilterPlayers in MergeFunc?");
             }
         }
         fetchMergedData();
@@ -229,12 +243,12 @@ const DraftScreen = ({playersBase}) => {
 
     const fetchDraftState = async () => {
         try{
-          console.log("League Id is ", leagueId);
-          console.log("loading in Draft State is ", loading);
+        //  console.log("League Id is ", leagueId);
+        //  console.log("loading in Draft State is ", loading);
           const { data, error } = await supabase.from("draft_state")
           .select("*")
           .eq("id", leagueId);
-          console.log("Draft State data fetched before update ", data);
+        //  console.log("Draft State data fetched before update ", data);
       
           if (error || data.length == 0) {
            console.error("Error fetching draft state:", error);
@@ -252,17 +266,18 @@ const DraftScreen = ({playersBase}) => {
               setCurrentRound(newData.current_round);
               setCurrentPick(newData.current_pick);
               setDraftOrder(newData.draft_order);
+              /*
               console.log("Draft State is fetched for the first time for League ",leagueId);
               console.log("Initial Draft is : Current Pick: ",newData.currentPick, " CurrentRound: ", newData.currentRound);
               console.log("Whereas Initial App Draft  is : Current Pick: ",currentPick, " CurrentRound: ", currentRound);
-  
+  */
           } else {
-          console.log("Draft Fetch is successful ");
+        //  console.log("Draft Fetch is successful ");
           setDraftStateId(data[0].id);
           setCurrentRound(data[0].current_round);
           setCurrentPick(data[0].current_pick);
           setDraftOrder(data[0].draft_order); // Default to teams if empty
-          console.log("Fetch State on App.tsx render ", data, "Current pick: ", data[0].current_pick, " Current Round: ", data[0].current_round, "Draft Order ", data[0].draft_order);
+        //  console.log("Fetch State on App.tsx render ", data, "Current pick: ", data[0].current_pick, " Current Round: ", data[0].current_round, "Draft Order ", data[0].draft_order, "DraftStateId ", draftStateId);
           }
         } catch (err) {
           console.log("🔥 Unexpected fetch error:", err);
@@ -270,50 +285,45 @@ const DraftScreen = ({playersBase}) => {
     }; 
 
     //Defining startDraftTimer Function
-    const startDraftTimer = async() => {
-        draftingMessageRef.current = ""; // ✅ Clear message when timer actually starts
-
-        if (draftOrder[currentPick]?.user_id !== userId) {
-            draftingMessageRef.current = ""; // ✅ Clear message when timer actually starts
-            console.log("⏳ Not your turn, timer will not start. Current turn is for :", draftOrder[currentPick]?.team_name);
-            return; // ✅ Exit if it's not the user's turn
-        }
-
+    const startDraftTimer = async () => {
+        if (draftOrder[currentPick]?.user_id !== userId) return;
+    
         console.log("🔥 Starting new draft timer");
     
-        if (timerRef.current) clearInterval(timerRef.current); // ✅ Ensure only one timer runs
+        if (timerRef.current) clearInterval(timerRef.current);
     
-        setTimer(20); // Reset timer
-
-        // ✅ Update `timer_start` in Supabase
-        console.log("Timer start being set in Supabase");
-        const { error } = await supabase
+        const initialTime = 90;
+        setTimer(initialTime);
+    
+        // ✅ Save timer start time to Supabase
+        console.log("DraftState Id before saving start time ", draftStateId);
+        console.log("Timer is being set with timer_start :", new Date().toISOString());
+        await supabase
             .from("draft_state")
-            .update({ timer_start: new Date().toISOString() })
-            .eq("id", leagueId); // Ensure correct draft state entry is updated
-
-        if (error) {
-            console.error("❌ Error updating draft timer in Supabase:", error);
-            return;
-        }else{
-            console.log("✅ Timer start set in Supabase");
-        }
-
-        timerRef.current = setInterval(() => {
+            .update({ timer: initialTime, timer_start: new Date().toISOString() })
+            .eq("id", draftStateId);
+    
+        timerRef.current = setInterval(async () => {
             setTimer((prevTime) => {
                 if (prevTime <= 1) {
                     clearInterval(timerRef.current);
-                    timerRef.current = null; // ✅ Prevent lingering intervals
-                    console.log("🔥 Calling autoDraft from startDraftTimer");
+                    timerRef.current = null;
                     autoDraft();
                     return 0;
                 }
                 return prevTime - 1;
             });
+    
+            // ✅ Continuously update the timer in Supabase
+        //    console.log("DraftStateId during timer ", draftStateId, timer);
+            await supabase
+                .from("draft_state")
+                .update({ timer: timer - 1 })
+                .eq("id", draftStateId);
         }, 1000);
     };
-
     
+
     const autoDraft = async () => {
         if (isAutoDrafting) {
             console.log("🚨 Skipping duplicate autoDraft call!");
@@ -362,8 +372,6 @@ const DraftScreen = ({playersBase}) => {
         }, 5000);
     };
     
-    
-
 /*
     console.log("Draft Order team ", draftOrder[currentPick].team_name);
     console.log("Roster is ", draftOrder[currentPick]);
@@ -383,33 +391,13 @@ const DraftScreen = ({playersBase}) => {
     console.log ("Test ", userLeagues, leagueId);
 */
 
-
     // Helper Functions
     const nextTurn = async() => {
         console.log("currentPick: ",currentPick," currentRound: ",currentRound);
         console.log("Draft Order inside Next Turn ", draftOrder);
-        
         let newPick = currentPick;
         let newRound = currentRound;
         let newDraftOrder = [...draftOrder];
-
-        //Save timer_start to Supabase
-        if (!timerStart || draftOrder[newPick]?.user_id === userId) {
-            console.log("🔄 First draft OR Snake draft detected - setting timerStart in Supabase.");
-          //  const adjustedTimerStart = new Date(Date.now() + 10000).toISOString(); // ✅ Offset by 5s
-          //  console.log("✅Offset the timer by sec for back-to-back draft")
-
-            const { error } = await supabase
-                .from("draft_state")
-                .update({ timer_start: new Date().toISOString() })
-                .eq("id", draftStateId);
-        
-            if (error) {
-                console.error("❌ Error initializing timer_start in Supabase:", error);
-            } else {
-                console.log("✅ TimerStart initialized in Supabase for first draft pick.");
-            }
-        }
 
         if (newPick < newDraftOrder.length - 1) {
             newPick++;
@@ -441,6 +429,18 @@ const DraftScreen = ({playersBase}) => {
             console.error("Error updating draft state:", error);
         }
 
+    /*
+        console.log('came to update after pick'+currentPick+' and draft size is'+draftOrder.length);
+        if (currentPick < draftOrder.length - 1) {
+            currentPick++;
+            console.log('now its pick '+ currentPick);
+        } else {
+            currentRound++;
+            draftOrder.reverse(); // Reverse the draft order for the next round
+            currentPick = 0;
+            console.log("Pick order has reversed. Current Pick is " + currentPick);
+        }
+        */
     }
 
     const isValidPick = (team, player) => {
@@ -498,7 +498,7 @@ const DraftScreen = ({playersBase}) => {
 
         //Stopping Timer since Draft button was clicked. 
         clearInterval(timerInterval); // Stop the timer on manual draft
-        setTimer(20); // Reset timer for next pick
+        setTimer(90); // Reset timer for next pick
       //  isDraftStarted.current = true;  // ✅ Mark draft as started when first draft is made
 
         const team = teams.find(t => t.id === draftOrder[currentPick].user_id);
@@ -600,18 +600,11 @@ const DraftScreen = ({playersBase}) => {
                 <Typography variant="h5" className="draft-league-name">{leagueName}</Typography>
                 <Typography variant="h6" className="draft-details">Drafting Team : {draftOrder[currentPick].team_name} |  Round: {currentRound} | Players Left: {availablePlayers.length}
                 </Typography>
-                {draftOrder[currentPick]?.user_id === userId ? (
-                    <Typography variant="h6" className="draft-league-name">
-                        Time Left: {timer}s
-                    </Typography>
-                ) : (
-                    <Typography variant="h6" className="draft-league-name">Timer is {timer}. {draftOrder[currentPick].team_name} is drafting. Please wait for your turn
-                    </Typography>
-                )}
-                {/*  {draftingMessage && <Typography variant="h6">{draftingMessage}</Typography>}
-                {timer === 20 ? (
-                    <Typography variant="h6">{draftOrder[currentPick].team_name} is drafting. Please wait for your turn</Typography>) : null}
-            */}
+                <Typography variant="h6" className="draft-league-name">Time Left: {timer}s</Typography>
+                {draftingMessage && <Typography variant="h6">{draftingMessage}</Typography>}
+                {timer === 90 || timer === 0 ? (
+                    <Typography variant="h6">Another User is drafting. Please wait for your turn</Typography>) : null}
+
 
               {/*  <Typography variant="h6" className="draft-status">
                  It is the turn of : {draftOrder[currentPick].team_name}
@@ -619,12 +612,6 @@ const DraftScreen = ({playersBase}) => {
                 </Typography>*/}
             </CardContent>
             </Card>
-
-            <Button className="draft-start-btn" 
-                        sx={{"&:hover": {backgroundColor: "kellygreen", color: "black"}}} 
-                    //    onClick={() => handleDraft(player)}// ✅ Disable when function is running
-                    >Start Draft</Button>
-
 
             {/* Position Filters */}
             <div className="position-filters">
@@ -712,27 +699,13 @@ const DraftScreen = ({playersBase}) => {
             }
 
             .draft-details {
-                text-align: left;
+                text-align: right;
             }
 
             .draft-status {
                 text-align: center;
                 font-weight: bold;
                 margin-top: 10px;
-            }
-
-            .draft-start-btn {
-              border-radius: 20px;
-              background: white;
-              color: black;
-              transition: 0.3s;
-              min-width: 80px;
-              margin-bottom: 20px;
-            }
-
-            .draft-start-btn:hover {
-              background: kellygreen;
-              color: black;
             }
 
             .position-filters {

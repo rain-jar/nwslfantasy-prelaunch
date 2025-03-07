@@ -18,6 +18,8 @@ export function LeagueProvider({leagueId, userId, children }) {
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [leagueParticipants, setLeagueParticipants] = useState([]);
   const [userLeagues, setAvailableLeagues] = useState([]);
+  const timerRef = useRef(null); // ✅ Persist timer across navigation
+
 
 
   useEffect(() => {
@@ -137,7 +139,7 @@ export function LeagueProvider({leagueId, userId, children }) {
   
 
   return (
-    <LeagueContext.Provider value={{users, setUsers, availablePlayers, setAvailablePlayers, leagueParticipants, setLeagueParticipants, leagueId, userId, userLeagues}}>
+    <LeagueContext.Provider value={{users, setUsers, availablePlayers, setAvailablePlayers, leagueParticipants, setLeagueParticipants, leagueId, userId, userLeagues, timerRef: timerRef}}>
       {children}
     </LeagueContext.Provider>
   );

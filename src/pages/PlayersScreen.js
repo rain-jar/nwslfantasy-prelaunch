@@ -52,6 +52,27 @@ const PlayersScreen = ({playersBase}) => {
     fetchPlayerStats();
   }, []);
 */
+
+useEffect(() => {
+  const newLeagueCreated = localStorage.getItem("newLeagueCreated");
+  const newUserJoined = localStorage.getItem("newUserJoined");
+
+  if (newLeagueCreated) {
+      console.log("🔄 Auto-refreshing after league creation...");
+      localStorage.removeItem("newLeagueCreated"); // ✅ Ensure it runs only once
+      window.location.reload(); // ✅ One-time refresh
+  }
+
+  if (newUserJoined) {
+    console.log("🔄 Auto-refreshing after user joining...");
+    localStorage.removeItem("newUserJoined"); // ✅ Ensure it runs only once
+    window.location.reload(); // ✅ One-time refresh
+}
+
+}, []);
+
+
+
   useEffect(() => {
     fetchPlayers().then((updatedList) => {
       console.log("updated List ", updatedList);

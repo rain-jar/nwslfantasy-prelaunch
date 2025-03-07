@@ -7,8 +7,6 @@ import {subscribeToLeaguePlayerInserts} from "./supabaseListeners";
 import {subscribeToLeagueRosterInserts} from "./supabaseListeners";
 import {subscribeToLeaguePlayerUpdates} from "./supabaseListeners";
 import { subscribeToLeagueRosterUpdates } from "./supabaseListeners";
-import { subscribeToDraftTimerUpdates } from "./supabaseListeners";
-
 
 
 const LeagueContext = createContext(null);
@@ -24,9 +22,7 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
   const [userLeagues, setUserLeagues] = useState(JSON.parse(localStorage.getItem("userLeagues")) || []);
   const [userId, setCurrentUserId] = useState(currentUserId || localStorage.getItem("currentUserId") || null);
   const [leagueId, setCurrentLeagueId] = useState(currentLeagueId || localStorage.getItem("currentLeagueId") || null);
-  const [timerStart, setTimerStart] = useState(localStorage.getItem("timer_start") || null); //for Draft Timer. 
   const [loading, setLoading] = useState(true); 
-  
 
 
   
@@ -79,7 +75,6 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
     localStorage.removeItem("currentUserId");
     localStorage.removeItem("currentLeagueId");
     localStorage.removeItem("userLeagues");
-    localStorage.removeItem("timer_start");
     window.location.href = "/"; // ✅ Redirect to Welcome Screen
   };
 
@@ -180,36 +175,9 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
             console.log("Setting new league participants ", data);
           }
         };
-
-        const fetchDraftState = async () => {
-          console.log("Fetching draft state...");
-          const { data, error } = await supabase
-            .from("draft_state")
-            .select("timer_start")
-            .eq("id", leagueId)
-            .single(); 
-        
-            if (error) {
-              console.error("❌ Error fetching draft state:", error);
-              return;
-            }
-            if (!data || !data.timer_start) {
-              console.warn("⚠️ No timer_start found in draft_state for league:", leagueId);
-              //return;
-            }
-            console.log("✅ Before setting, Fetched and set timerStart:", data.timer_start);
-            setTimerStart(data.timer_start);
-            console.log("✅ After setting, Fetched and set timerStart:", data.timer_start);
-            localStorage.setItem("timer_start", data.timer_start);
-            console.log("✅ After local, Fetched and set timerStart:", data.timer_start);
-        };
-
-
+  
         fetchAvailablePlayers();
         fetchLeagueParticipants();
-        console.log("Calling fetchDraftState for league:", leagueId);
-        fetchDraftState();
-
     //  }
 
     //  const unsubscribeLeagueInserts = subscribeToLeagueInserts(setAvailableLeagues);
@@ -217,8 +185,6 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
       const unsubscribeRosterInserts = subscribeToLeagueRosterInserts(setLeagueParticipants, leagueId);
       const unsubscribeUpdates = subscribeToLeaguePlayerUpdates(setAvailablePlayers, leagueId);
       const unsubscribeRosterUpdates = subscribeToLeagueRosterUpdates(setLeagueParticipants, leagueId);
-      const unsubscribeDraftTimer = subscribeToDraftTimerUpdates(setTimerStart);
-
 
       supabase.getChannels().forEach(channel => console.log("Active channel:", channel));
 
@@ -228,14 +194,12 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
         unsubscribeRosterInserts();
         unsubscribeUpdates();
         unsubscribeRosterUpdates();
-        unsubscribeDraftTimer();
-
       };
   }, [leagueId, userLeagues]);
   
 
   return (
-    <LeagueContext.Provider value={{users, setUsers, availablePlayers, setAvailablePlayers, leagueParticipants, setLeagueParticipants, leagueId, userId, userLeagues, setCurrentUserId, loading, handleLogout, timerStart}}>
+    <LeagueContext.Provider value={{users, setUsers, availablePlayers, setAvailablePlayers, leagueParticipants, setLeagueParticipants, leagueId, userId, userLeagues, setCurrentUserId, loading, handleLogout}}>
       {children}
     </LeagueContext.Provider>
   );

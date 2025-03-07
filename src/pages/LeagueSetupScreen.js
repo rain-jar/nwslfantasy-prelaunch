@@ -280,13 +280,16 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
 
     if (mode === "create"){
         await initializeLeaguePlayers(createLeagueId);
-      //  await (initializeLeagueDraftState(leagueId);
+        await reinitializeDraftState(finalLeagueId, fetchParticipant.data);
+        localStorage.setItem("newLeagueCreated", "true");
     }else{
 
         console.log("Players table for this league is already setup because mode is : ", mode);
         console.log("Checking and if needed re-initializing draft-state. Mode : ", finalLeagueId);
         await reinitializeDraftState(finalLeagueId, fetchParticipant.data);
         console.log("waited for draft-state reinitialization");
+        localStorage.setItem("newUserJoined", "true");
+
     }
 
     navigate("/players");

@@ -147,23 +147,3 @@ export const subscribeToLeagueRosterUpdates = (setLeagueParticipants, leagueId) 
 
   return () => supabase.removeChannel(subscription);
 };
-
-//Listener for DraftTimer Starting for each pick
-export const subscribeToDraftTimerUpdates = (setTimerStart) => {
-  console.log("Setting up draft timer real-time listener...");
-
-  const timerSubscription = supabase
-    .channel("draft_timer_changes")
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "draft_state" }, (payload) => {
-      if (payload.new.timer_start) {
-        console.log("⏳ Draft timer updated:", payload.new.timer_start);
-        setTimerStart(payload.new.timer_start);
-        localStorage.setItem("timer_start", payload.new.timer_start);
-      }
-    })
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(timerSubscription);
-  };
-};

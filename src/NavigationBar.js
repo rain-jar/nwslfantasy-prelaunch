@@ -4,15 +4,20 @@ import { useLeague } from "./LeagueContext";
 import { supabase } from "./supabaseClient";
 import { AppBar, Toolbar, Button, Menu, MenuItem, Typography } from "@mui/material";
 
+
 const NavigationBar = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { users, userId, leagueId, userLeagues, handleLogout } = useLeague(); // Fetch user's leagues from context
+    const { users, userId, leagueId, userLeagues, handleLogout, timerStart } = useLeague(); // Fetch user's leagues from context
     const [anchorEl, setAnchorEl] = useState(null);
     const [leagues, setAvailableLeagues] = useState ([]);
     const [isLoading, setLoading] = useState(true);
 
-
+/*
+    useEffect(()=> {
+        console.log("TimerStart is :", timerStart);
+    })
+*/
     const fetchLeagues = async () => {
         const { data, error } = await supabase
         .from("league_rosters")
@@ -48,7 +53,6 @@ const NavigationBar = () => {
    // console.log("User Leagues in Navigation ", userLeagues, users, leagueId, userId);
     //const userName = users.find((m) => m.id === userId).user_name;
    // const leagueName = userLeagues.find((m) => m.id === leagueId).name;
-
 
     const handleMenuOpen = (event) => {
         setAnchorEl(event.currentTarget);
