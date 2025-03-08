@@ -82,20 +82,14 @@ const DraftScreen = ({playersBase}) => {
                 .single();
             if (!error && data) {
                 console.log("Fetched full teams count in DraftScreen", data.full_teams_count);
-
-                // ✅ Prevent overwriting with an older value
-                if (data.full_teams_count >= fullTeamsCountRef.current) {
-                    fullTeamsCountRef.current = data.full_teams_count;
-                    setFullTeamsCount(data.full_teams_count);
-                } else {
-                    console.log("Skipping update: Supabase value is older than local state");
-                }
+                fullTeamsCountRef.current = data.full_teams_count;
+                setFullTeamsCount(data.full_teams_count);
             }else{
                 console.log("Error fetching fullTeamsCount in DraftScreen");
             }
         };
         fetchFullTeamsCount();
-    }, [fullTeamsCount]);
+    }, []);
 
 
 
@@ -420,7 +414,7 @@ const DraftScreen = ({playersBase}) => {
 
 
     // Helper Functions
-    const nextTurn = async(wasFull = false) => {
+    const nextTurn = async() => {
 
         console.log("currentPick: ",currentPick," currentRound: ",currentRound);
         console.log("Draft Order inside Next Turn ", draftOrder);
@@ -428,15 +422,6 @@ const DraftScreen = ({playersBase}) => {
         let newPick = currentPick;
         let newRound = currentRound;
         let newDraftOrder = [...draftOrder];
-
-        const totalTeams = leagueParticipants.length;
-        const previousUserId = draftOrder[currentPick]?.user_id; // ✅ Track previous user ID
-
-        // ✅ Ensure we don’t enter an infinite loop if all teams are full
-        if (fullTeamsCountRef.current >= totalTeams) {
-            console.log("✅ All teams are full. Ending the draft.");
-            return;
-        }
 
         //Save timer_start to Supabase
         if (!timerStart || draftOrder[newPick]?.user_id === userId) {
@@ -455,10 +440,7 @@ const DraftScreen = ({playersBase}) => {
                 console.log("✅ TimerStart initialized in Supabase for first draft pick.");
             }
         }
-        
 
-
-        // ✅ Increment the pick normally
         if (newPick < newDraftOrder.length - 1) {
             newPick++;
         } else {
@@ -466,18 +448,7 @@ const DraftScreen = ({playersBase}) => {
             newDraftOrder.reverse(); // Reverse for snake draft
             newPick = 0;
         }
-
-        while (wasFull && newDraftOrder[newPick]?.user_id === previousUserId) {
-            console.log("Skipping back-to-back pick for full team...");
-            if (newPick < newDraftOrder.length - 1) {
-                newPick++;
-            } else {
-                newRound++;
-                newDraftOrder.reverse();
-                newPick = 0;
-            }
-        }
-
+        
         // Update local state
         setCurrentPick(newPick);
         setCurrentRound(newRound);
@@ -632,7 +603,7 @@ const DraftScreen = ({playersBase}) => {
         const team = teams.find(t => t.id === draftOrder[currentPick].user_id);
 
         if (!team || player.onroster ) {
-            console.log(`Invalid pick: ${player.name} because Player onroster is :`, player.onroster);
+            console.log(`Invalid pick: ${player.name}`);
             isDraftingRef.current = false; 
             setIsDrafting(false);
             return false;
@@ -659,7 +630,7 @@ const DraftScreen = ({playersBase}) => {
                     return false; // ✅ Stop the draft
                 }
             
-                await nextTurn(true); // ✅ Skip this team and go to the next turn. Passing true to indicate team is full.
+                await nextTurn(); // ✅ Skip this team and go to the next turn
                 return false;
             }
 
@@ -741,7 +712,7 @@ const DraftScreen = ({playersBase}) => {
 
             console.log(`${draftOrder[currentPick].team_name} drafted ${player.name}`);
 
-            await nextTurn(false); //Passing false to indicate teams are not full yet.
+            await nextTurn();
             console.log('current Team is ' + draftOrder[currentPick].team_name);
 
             isDraftingRef.current = false; // ✅ Unlock drafting immediately

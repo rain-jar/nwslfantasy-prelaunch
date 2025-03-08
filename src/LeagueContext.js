@@ -25,6 +25,8 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
   const [userId, setCurrentUserId] = useState(currentUserId || localStorage.getItem("currentUserId") || null);
   const [leagueId, setCurrentLeagueId] = useState(currentLeagueId || localStorage.getItem("currentLeagueId") || null);
   const [timerStart, setTimerStart] = useState(localStorage.getItem("timer_start") || null); //for Draft Timer. 
+  const [fullTeamsCount, setFullTeamsCount] = useState(0); // ✅ For ending the draft. 
+
   const [loading, setLoading] = useState(true); 
   
 
@@ -235,7 +237,7 @@ export function LeagueProvider({currentLeagueId, currentUserId, children }) {
   
 
   return (
-    <LeagueContext.Provider value={{users, setUsers, availablePlayers, setAvailablePlayers, leagueParticipants, setLeagueParticipants, leagueId, userId, userLeagues, setCurrentUserId, loading, handleLogout, timerStart}}>
+    <LeagueContext.Provider value={{users, setUsers, availablePlayers, setAvailablePlayers, leagueParticipants, setLeagueParticipants, leagueId, userId, userLeagues, setCurrentUserId, loading, handleLogout, timerStart, fullTeamsCount, setFullTeamsCount}}>
       {children}
     </LeagueContext.Provider>
   );

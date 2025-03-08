@@ -78,16 +78,17 @@ export const subscribeToLeagueRosterInserts = (setLeagueParticipants, leagueId) 
   };
 
   // Listener for Draft (Used in DraftScreen.js)
-export const subscribeToDraftUpdates = (setCurrentRound, setCurrentPick, setDraftOrder) => {
+export const subscribeToDraftUpdates = (setCurrentRound, setCurrentPick, setDraftOrder, setFullTeamsCount) => {
   console.log("Setting up draft state real-time listener...");
 
   const draftSubscription = supabase
     .channel("draft_changes")
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "draft_state" }, (payload) => {
-    //  console.log("Draft state updated:", payload.new);
+      console.log("Draft state updated:", payload.new);
       setCurrentRound(payload.new.current_round);
       setCurrentPick(payload.new.current_pick);
-      setDraftOrder(payload.new.draft_order);        
+      setDraftOrder(payload.new.draft_order); 
+      setFullTeamsCount(payload.new.full_teams_count || 0); // ✅ Sync full teams count  
     })
     .subscribe();
 

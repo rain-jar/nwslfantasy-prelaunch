@@ -51,7 +51,8 @@ const MyTeamScreen = ({playersBase}) => {
       if (error1) throw new Error("❌ Error fetching season stats: " + error1.message);
       */
       if (statsFilter === "2024") {
-        const currentSeasonPlayers = currentRoster.map((player) => {
+        const filteredRoster = currentRoster.filter(player => player && player.player_id); // ✅ Remove empty spots
+        const currentSeasonPlayers = filteredRoster.map((player) => {
           const seasonMerge = playersBase.find((m) => m.id === player.player_id) || {};
           return {
             ...player,
@@ -71,12 +72,12 @@ const MyTeamScreen = ({playersBase}) => {
 
         const positionOrder = { GK: 1, DF: 2, MF: 3, FW: 4 };
 
-        const sortedRoster = [...currentSeasonPlayers].sort((a, b) => {
+        const sortedRoster = [...currentSeasonPlayers].filter(player => player.position).sort((a, b) => {
           console.log("Current roster is :", currentSeasonPlayers);
-          const posA = a.position.split("-")[0]; // Use first position for hybrid roles
-          const posB = b.position.split("-")[0];
+          const posA = a.position.split("-")[0] || "ZZ"; // ✅ Ensure no crash on undefined
+          const posB = b.position.split("-")[0] || "ZZ";
           return positionOrder[posA] - positionOrder[posB];
-        });
+      });
 
         setcurrentUserData(sortedRoster);
 
@@ -111,9 +112,9 @@ const MyTeamScreen = ({playersBase}) => {
           }
         });
 
-
         // 🔄 **Merge Data: Default to 0s if player has no match data**
-        const currentTeamPlayers = currentRoster.map((player) => {
+        const filteredRoster = currentRoster.filter(player => player && player.player_id); // ✅ Remove empty spots
+        const currentTeamPlayers = filteredRoster.map((player) => {
           const seasonMerge = mergedTeamPlayers.find((m) => m.id === player.player_id) || {};
           return {
             ...player,
@@ -134,12 +135,12 @@ const MyTeamScreen = ({playersBase}) => {
 
         const positionOrder = { GK: 1, DF: 2, MF: 3, FW: 4 };
 
-        const sortedRoster = [...currentTeamPlayers].sort((a, b) => {
+        const sortedRoster = [...currentTeamPlayers].filter(player => player.position).sort((a, b) => {
           console.log("Current roster is :", currentTeamPlayers);
-          const posA = a.position.split("-")[0]; // Use first position for hybrid roles
-          const posB = b.position.split("-")[0];
+          const posA = a.position.split("-")[0] || "ZZ"; // ✅ Ensure no crash on undefined
+          const posB = b.position.split("-")[0] || "ZZ";
           return positionOrder[posA] - positionOrder[posB];
-        });
+      });
 
         setcurrentUserData(sortedRoster);
         return;
