@@ -11,7 +11,7 @@ const MyTeamScreen = ({playersBase}) => {
   const [currentUserData, setcurrentUserData] = useState([]); 
   const [selectedPlayer, setSelectedPlayer] = useState([]);
   const [openModal, setOpenModal] = useState(false);
-  const [currentBenchData, setCurrentBenchData] = useState([]);
+
 
   console.log("Checking league participants before update ", leagueParticipants, userId, users);
   console.log("Current User Data ", currentUserData);
@@ -42,50 +42,17 @@ const MyTeamScreen = ({playersBase}) => {
     try{
       let seasonTeamData, matchData, error1, error2;
       let currentRoster, currentRosterArray;
-
-      const MAX_MAIN_PLAYERS = 7;
-      const MAX_BENCH_PLAYERS = 1;
-      const TOTAL_TEAM_SIZE = MAX_MAIN_PLAYERS + MAX_BENCH_PLAYERS;
-      const REQUIRED_POSITIONS = { FW: 2, MF: 2, DF: 2, GK: 1 };
-
-
-
       currentRosterArray = leagueParticipants.find((m) => m.user_id === userId);
       currentRoster = currentRosterArray.roster;
       console.log("Current Roster is ", currentRoster);
       console.log("Start of MyTeam Filter for: ", statsFilter);
-
-      // ✅ Process Main Team (First MAX_MAIN_PLAYERS indexes, filter out nulls)
-      const mainTeam = currentRoster
-          .slice(0, MAX_MAIN_PLAYERS) 
-          .filter(p => p && p.player_id);
-
-      // ✅ Process Bench Team (Indexes after MAX_MAIN_PLAYERS, up to full roster length, filter out nulls)
-      const bench = currentRoster
-          .slice(MAX_MAIN_PLAYERS, TOTAL_TEAM_SIZE)
-          .filter(p => p && p.player_id);
-
+      /*
+      ({ data: seasonTeamData, error: error1 } = await supabase.from("players_base").select("*"));   // Fetch Season Stats
+      if (error1) throw new Error("❌ Error fetching season stats: " + error1.message);
+      */
       if (statsFilter === "2024") {
-      //  const filteredRoster = currentRoster.filter(player => player && player.player_id); // ✅ Remove empty spots
-        const currentSeasonMainPlayers = mainTeam.map((player) => {
-          const seasonMerge = playersBase.find((m) => m.id === player.player_id) || {};
-          return {
-            ...player,
-            team : seasonMerge.team || "",
-            goals: seasonMerge.goals || 0,
-            assists: seasonMerge.assists || 0,
-            Minutes: seasonMerge.Minutes || 0,
-            PKMissed: seasonMerge.PKMissed || 0,
-            "Goals Against": seasonMerge["Goals Against"] || 0,
-            Saves: seasonMerge.Saves || 0,
-            "Clean Sheet": seasonMerge["Clean Sheet"] || 0,
-            "Yellow Cards": seasonMerge["Yellow Cards"] || 0,
-            "Red Cards": seasonMerge["Red Cards"] || 0,
-            FantasyPoints: seasonMerge.FantasyPoints || 0,
-          };
-        })
-
-        const currentSeasonBenchPlayers = bench.map((player) => {
+        const filteredRoster = currentRoster.filter(player => player && player.player_id); // ✅ Remove empty spots
+        const currentSeasonPlayers = filteredRoster.map((player) => {
           const seasonMerge = playersBase.find((m) => m.id === player.player_id) || {};
           return {
             ...player,
@@ -105,15 +72,14 @@ const MyTeamScreen = ({playersBase}) => {
 
         const positionOrder = { GK: 1, DF: 2, MF: 3, FW: 4 };
 
-        const sortedRoster = [...currentSeasonMainPlayers].filter(player => player.position).sort((a, b) => {
-          console.log("Current roster is :", currentSeasonMainPlayers);
+        const sortedRoster = [...currentSeasonPlayers].filter(player => player.position).sort((a, b) => {
+          console.log("Current roster is :", currentSeasonPlayers);
           const posA = a.position.split("-")[0] || "ZZ"; // ✅ Ensure no crash on undefined
           const posB = b.position.split("-")[0] || "ZZ";
           return positionOrder[posA] - positionOrder[posB];
       });
 
         setcurrentUserData(sortedRoster);
-        setCurrentBenchData(currentSeasonBenchPlayers);
 
         return;
       } else if (statsFilter === "week1") {
@@ -147,8 +113,8 @@ const MyTeamScreen = ({playersBase}) => {
         });
 
         // 🔄 **Merge Data: Default to 0s if player has no match data**
-      //  const filteredRoster = currentRoster.filter(player => player && player.player_id); // ✅ Remove empty spots
-        const currentMainTeamPlayers = mainTeam.map((player) => {
+        const filteredRoster = currentRoster.filter(player => player && player.player_id); // ✅ Remove empty spots
+        const currentTeamPlayers = filteredRoster.map((player) => {
           const seasonMerge = mergedTeamPlayers.find((m) => m.id === player.player_id) || {};
           return {
             ...player,
@@ -165,37 +131,18 @@ const MyTeamScreen = ({playersBase}) => {
             FantasyPoints: seasonMerge.FantasyPoints || 0,
           };
         })
-
-        const currentBenchPlayers = bench.map((player) => {
-          const seasonMerge = mergedTeamPlayers.find((m) => m.id === player.player_id) || {};
-          return {
-            ...player,
-            team : seasonMerge.team || "",
-            goals: seasonMerge.goals || 0,
-            assists: seasonMerge.assists || 0,
-            Minutes: seasonMerge.Minutes || 0,
-            PKMissed: seasonMerge.PKMissed || 0,
-            "Goals Against": seasonMerge["Goals Against"] || 0,
-            Saves: seasonMerge.Saves || 0,
-            "Clean Sheet": seasonMerge["Clean Sheet"] || 0,
-            "Yellow Cards": seasonMerge["Yellow Cards"] || 0,
-            "Red Cards": seasonMerge["Red Cards"] || 0,
-            FantasyPoints: seasonMerge.FantasyPoints || 0,
-          };
-        })
-        console.log("Players in players table and on this current user roster: ", currentMainTeamPlayers);
+        console.log("Players in players table and on this current user roster: ", currentTeamPlayers);
 
         const positionOrder = { GK: 1, DF: 2, MF: 3, FW: 4 };
 
-        const sortedRoster = [...currentMainTeamPlayers].filter(player => player.position).sort((a, b) => {
-          console.log("Current roster is :", currentMainTeamPlayers);
+        const sortedRoster = [...currentTeamPlayers].filter(player => player.position).sort((a, b) => {
+          console.log("Current roster is :", currentTeamPlayers);
           const posA = a.position.split("-")[0] || "ZZ"; // ✅ Ensure no crash on undefined
           const posB = b.position.split("-")[0] || "ZZ";
           return positionOrder[posA] - positionOrder[posB];
       });
 
         setcurrentUserData(sortedRoster);
-        setCurrentBenchData(currentBenchPlayers);
         return;
       }
     } catch (err) {
@@ -272,10 +219,6 @@ const MyTeamScreen = ({playersBase}) => {
           <Button className="action-btn">Drop Player</Button>
         </div>
 
-        <div className="table-gap">
-        <Typography variant="h5" className="bench-gap">Starting XI</Typography>
-        </div>
-
         {/* Team Players Table */}
         <TableContainer component={Paper} className="players-table">
           <Table>
@@ -325,60 +268,6 @@ const MyTeamScreen = ({playersBase}) => {
             </TableBody>
           </Table>
         </TableContainer>
-
-        <div className="table-gap">
-        <Typography variant="h5" className="bench-gap">Bench</Typography>
-        </div>
-
-        {/* Team Players Table */}
-        <TableContainer component={Paper} className="players-table">
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Pos</TableCell>
-              <TableCell></TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Team</TableCell>
-              <TableCell>Fpts</TableCell>
-              <TableCell>Mins</TableCell>
-              <TableCell>Gls</TableCell>
-              <TableCell>Ast</TableCell>
-              <TableCell>PKM</TableCell>
-              <TableCell>GA</TableCell>
-              <TableCell>Svs</TableCell>
-              <TableCell>YC</TableCell>
-              <TableCell>RC</TableCell>
-              <TableCell>CS</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-              {currentBenchData.map((player, index) => (
-                  <TableRow key={index}
-                    onClick={() => {
-                      setSelectedPlayer(player);
-                      setOpenModal(true); // ✅ Open modal when row is clicked
-                    }}
-                    sx={{ cursor: "pointer", "&:hover": { backgroundColor: "rgba(16, 86, 51, 0.1)" } }} // Hover effect for better UX
-                  >
-                  <TableCell>{player.position}</TableCell>
-                  <TableCell><img src={player.image_url || process.env.PUBLIC_URL + "/placeholder.png"} alt={player.name} className="player-img"   onError={(e) => { e.target.onerror = null; e.target.src = process.env.PUBLIC_URL + "/placeholder.png"; }}/></TableCell>
-                  <TableCell>{player.name}</TableCell>
-                  <TableCell>{player.team}</TableCell>
-                  <TableCell>{player.FantasyPoints}</TableCell>
-                  <TableCell>{player.Minutes}</TableCell>
-                  <TableCell>{player.goals}</TableCell>
-                  <TableCell>{player.assists}</TableCell>
-                  <TableCell>{player.PKMissed}</TableCell>
-                  <TableCell>{player["Goals Against"]}</TableCell>
-                  <TableCell>{player.Saves}</TableCell>
-                  <TableCell>{player["Yellow Cards"]}</TableCell>
-                  <TableCell>{player["Red Cards"]}</TableCell>
-                  <TableCell>{player["Clean Sheet"]}</TableCell>
-                  </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
 
         {selectedPlayer && (
           <Modal open={openModal} onClose={() => setOpenModal(false)}>
@@ -443,7 +332,7 @@ const MyTeamScreen = ({playersBase}) => {
             padding: 15px;
             border-radius: 12px; /* Smooth edges */
             box-shadow: 25px 25px 25px rgba(7, 91, 47, 0.4), -5px -5px 5px rgba(11, 82, 45, 0.1); /* Embossed effect */
-         //   filter: blur(0.3px); /* Slight blur for smoother edges */
+            filter: blur(0.3px); /* Slight blur for smoother edges */
           }
 
           .team-name {
@@ -569,20 +458,6 @@ const MyTeamScreen = ({playersBase}) => {
               background: white;
               font-family: "American Typewriter", serif;
             }
-
-            .table-gap {
-              flex-grow: 1; 
-              width: 90%;
-              margin: 0 auto;
-              margin-top: 20px;
-              margin-bottom: 20px;
-            }
-
-            .bench-gap {
-            text-align: left;
-            }
-
-              
         `}</style>
       </div>
     </div>
