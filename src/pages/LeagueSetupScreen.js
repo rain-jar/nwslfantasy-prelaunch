@@ -56,16 +56,32 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
       console.error("Error fetching leagues:", error);
       return;
     }
+
     leagueList = data;
     console.log("Available Leagues are: ", leagueList);
     console.log("User Leagues ", leagues);
+
+
     try{
+      //Check for available leagues out of all the leagues 
       const registeredLeagueIds = leagues.map((league) => league.id);
       const joinableLeagues = leagueList.filter((league) => !registeredLeagueIds.some((p) => p === league.league_id)
       );
       console.log("Joinable Leagues", joinableLeagues );
+
+      const { data: draftData, error: draftError } = await supabase.from("draft_state").select("*");
+      if (draftError) {
+        console.error("Error fetching draft state in LeagueSetup:", error);
+        return;
+      }
+
+      //Check for only unlocked leagues 
+      const unLockedLeagueStates = draftData.filter((league) => league.lockstatus === "predraft");
+      const unLockedLeagues = joinableLeagues.filter((league) => unLockedLeagueStates.some((p) => p.id === league.league_id));
+      console.log("UnLocked and Available Leagues are : ", unLockedLeagues);
       
-      const leagueUserCount = joinableLeagues.map( async(league) => {
+      //Find the user count in those unlocked & available leagues. 
+      const leagueUserCount = unLockedLeagues.map( async(league) => {
         const userCount = await fetchLeagueUserCount(league.league_id);
        // console.log("leagueUserCount ", league.league_id, userCount.data);
         return {...league, 
@@ -75,7 +91,6 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
       const resolvedLeagues = await Promise.all(leagueUserCount);
 
       console.log("Joinable Leagues with user count ", resolvedLeagues);
-
 
       leagueList = [...resolvedLeagues];
     } catch (err) {
@@ -163,6 +178,7 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
 
   const reinitializeDraftState = async (finalLeagueId, participantParam) => {
       const isUpdated = false;
+      let lockValue = "predraft";
     try {
       // Fetch all player IDs from players_base
       console.log("League Id ", finalLeagueId);
@@ -184,7 +200,7 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
         console.log("⚠️ Draft is not set yet. So setting the draft state for the first time for League: ", finalLeagueId, data);
         const { data: newData, error: insertError } = await supabase
         .from("draft_state")
-        .insert([{ id: finalLeagueId, current_round: 1, current_pick: 0, draft_order: participantParam }])
+        .insert([{ id: finalLeagueId, current_round: 1, current_pick: 0, draft_order: participantParam, lockstatus: lockValue }])
         .select()
         .single();
 
@@ -195,11 +211,17 @@ const LeagueSetupScreen = ({onLeagueChosen}) => {
         }
 
       }else{
+
+        if (participantParam.length >=3 ) {
+          lockValue = "draft";
+        }else{
+          lockValue = "predraft";
+        }
       // Since the draft-state is already set, updating the draft order with latest teams. 
         console.log("Since the draft-state is already set, updating the draft state with reinitialized state.")
         const { data: newData, error: insertError } = await supabase
               .from("draft_state")
-              .update({ current_round: 1, current_pick: 0, draft_order: participantParam })
+              .update({ current_round: 1, current_pick: 0, draft_order: participantParam, lockstatus: lockValue })
               .eq("id", finalLeagueId)
               .select()
               .single();

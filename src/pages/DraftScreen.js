@@ -10,7 +10,7 @@ import { useRef } from "react";
 const DraftScreen = ({playersBase}) => {
 
     const { availablePlayers, setAvailablePlayers, leagueId, users, userId, userLeagues } = useLeague();
-    const { leagueParticipants, setLeagueParticipants, timerStart} = useLeague();
+    const { leagueParticipants, setLeagueParticipants, timerStart, lockStatus} = useLeague();
     const [positionFilter, setPositionFilter] = useState("All");
     
     const [players, setPlayers] = useState([...availablePlayers]);
@@ -105,10 +105,17 @@ const DraftScreen = ({playersBase}) => {
             console.log("Returning due to either ", timerStart, " or ", draftOrder[currentPick]?.user_id);         
             return;
         }
+
+        if(lockStatus !== "draft"){
+            console.log("Returning since draft status is inactive");
+            return;
+        }
+
         console.log("Entering drafting useEffect");
         console.log("Teams Full Counter in useEffect , ", fullTeamsCountRef.current);
         if (fullTeamsCountRef.current >= leagueParticipants.length) {
             console.log("✅ All teams are full. Ending the draft.");
+            lockUpdate(); //Updates the lock status to postdraft once draft is finished. 
             return; // ✅ Stop the draft
         }
         
@@ -220,6 +227,22 @@ const DraftScreen = ({playersBase}) => {
         fetchMergedData();
       }, [availablePlayers, loading]);
 
+
+    const lockUpdate = async() => {
+        const { data: newData, error: insertError } = await supabase
+        .from("draft_state")
+        .update({ lockstatus: "postdraft" })
+        .eq("id", leagueId)
+        .select()
+        .single();
+
+        if (insertError) {
+            console.error("Error updating lock status after end of league :", insertError);
+            return;
+        }else{
+            console.log("✅ After end of draft, Lock Status updated to  ",  newData.lockstatus);
+        }
+    }
 
     const mergeFunc = async () => {
         const mergedList = availablePlayers.map((player) => {
@@ -827,9 +850,9 @@ const DraftScreen = ({playersBase}) => {
                     <TableCell>{player.name}</TableCell>
                     <TableCell>{player.position}</TableCell>
                     <TableCell><Button className="add-btn" 
-                        sx={{"&:hover": {backgroundColor: "kellygreen", color: "black"}}} 
+                        sx={{"&:hover": {backgroundColor: "darkgreen", color: "white"}}} 
                         onClick={() => handleDraft(player)}
-                        disabled={isDrafting} // ✅ Disable when function is running
+                        disabled={isDrafting || lockStatus === "predraft" || lockStatus === "postdraft"} // ✅ Disable when function is running
                     >Draft</Button></TableCell>
                     
                   </TableRow>
@@ -891,7 +914,7 @@ const DraftScreen = ({playersBase}) => {
 
             .draft-start-btn {
               border-radius: 20px;
-              background: white;
+              background: #62FCDA;
               color: black;
               transition: 0.3s;
               min-width: 80px;
@@ -919,13 +942,13 @@ const DraftScreen = ({playersBase}) => {
             }
 
             .filter-btn:hover {
-              background: kellygreen;
-              color: black;
+              background: darkgreen;
+              color: white;
             }
 
             .filter-btn.active {
-              background: darkgreen; /* Ensures contrast */
-              color: white;
+              background: #62FCDA; /* Ensures contrast */
+              color: black;
               font-weight: bold;
             }
 
@@ -933,6 +956,18 @@ const DraftScreen = ({playersBase}) => {
               width: 40px;
               height: 40px;
               border-radius: 50%;
+            }
+
+            .add-btn {
+              border-radius: 20px;
+              background: #62FCDA;
+              color: black;
+              transition: 0.3s;
+            }
+
+            .add-btn:hover {
+              background: darkgreen
+              color: black !important;
             }
 
             .player-pool-table {

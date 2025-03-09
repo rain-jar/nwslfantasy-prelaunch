@@ -8,16 +8,17 @@ import { AppBar, Toolbar, Button, Menu, MenuItem, Typography } from "@mui/materi
 const NavigationBar = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { users, userId, leagueId, userLeagues, handleLogout, timerStart } = useLeague(); // Fetch user's leagues from context
+    const { users, userId, leagueId, userLeagues, handleLogout, timerStart, lockStatus } = useLeague(); // Fetch user's leagues from context
     const [anchorEl, setAnchorEl] = useState(null);
     const [leagues, setAvailableLeagues] = useState ([]);
     const [isLoading, setLoading] = useState(true);
 
-/*
+
     useEffect(()=> {
         console.log("TimerStart is :", timerStart);
-    })
-*/
+        console.log("League Lock Status is :", lockStatus);
+    }, [])
+
     const fetchLeagues = async () => {
         const { data, error } = await supabase
         .from("league_rosters")

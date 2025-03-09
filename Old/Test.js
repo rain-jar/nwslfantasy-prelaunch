@@ -74,3 +74,38 @@ const nextTurn = async (wasFull = false) => { // ✅ Accept wasFull flag
         console.error("Error updating draft state:", error);
     }
 };
+
+import { subscribeToDraftTimerUpdates } from "./supabaseListeners";
+
+export function LeagueProvider({ children }) {
+
+    const [timerStart, setTimerStart] = useState(localStorage.getItem("timer_start") || null); //for Draft Timer. 
+
+    console.log("outside useEffect")
+
+    useEffect(() => {
+        console.log("Inside UseEffect");
+        if (!leagueId) return;
+            const fetchDraftState = async () => {
+            console.log("Fetching draft state...");
+                setTimerStart(data.timer_start);
+                localStorage.setItem("timer_start", data.timer_start);
+            };
+            fetchDraftState();
+
+        const unsubscribeDraftTimer = subscribeToDraftTimerUpdates(setTimerStart);
+
+        supabase.getChannels().forEach(channel => console.log("Active channel:", channel));
+
+        return () => {
+            unsubscribeDraftTimer();
+
+        };
+    }, [leagueId, userLeagues]);
+
+    return (
+        <LeagueContext.Provider value={{timerStart}}>
+          {children}
+        </LeagueContext.Provider>
+      );
+}

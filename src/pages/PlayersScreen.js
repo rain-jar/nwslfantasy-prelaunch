@@ -11,7 +11,7 @@ import NavigationBar from "../NavigationBar";
 const PlayersScreen = ({playersBase}) => {
 
   const { availablePlayers, setAvailablePlayer } = useLeague();
-  const { leagueParticipants, setLeagueParticipants, userId, leagueId } = useLeague();
+  const { leagueParticipants, setLeagueParticipants, userId, leagueId, lockStatus } = useLeague();
 
   const [search, setSearch] = useState("");
   const [positionFilter, setPositionFilter] = useState("All");
@@ -318,11 +318,12 @@ useEffect(() => {
                 {filteredPlayers.map((player, index) => (
                   <TableRow key={index}>
                     <TableCell><Button className="add-btn"
+                    disabled={lockStatus === 'predraft' || lockStatus === 'draft'}
                     onClick={() => {
                       setSelectedPlayer(player);
                       setOpenModal(true); // ✅ Open modal when row is clicked
                     }}
-                    sx={{"&:hover": {backgroundColor: "kellygreen", color: "black"}}}>Add</Button></TableCell>
+                    sx={{"&:hover": {backgroundColor: "darkgreen", color: "white"}}}>Add</Button></TableCell>
                     <TableCell><img src={player.image_url || process.env.PUBLIC_URL + "/placeholder.png"} alt={player.name} className="player-img"   onError={(e) => { e.target.onerror = null; e.target.src = process.env.PUBLIC_URL + "/placeholder.png"; }}/></TableCell>
                     <TableCell>{player.name}</TableCell>
                     <TableCell>{player.team}</TableCell>
@@ -424,13 +425,13 @@ useEffect(() => {
             }
 
             .filter-btn:hover {
-              background: kellygreen;
-              color: black;
+              background: darkgreen;
+              color: white;
             }
 
             .filter-btn.active {
-              background: darkgreen; /* Ensures contrast */
-              color: white;
+              background: #62FCDA; /* Ensures contrast */
+              color: black;
               font-weight: bold;
             }
 
@@ -460,7 +461,7 @@ useEffect(() => {
 
             .add-btn {
               border-radius: 20px;
-              background: white;
+              background: #62FCDA;
               color: black;
               transition: 0.3s;
             }

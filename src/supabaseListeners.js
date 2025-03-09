@@ -168,3 +168,27 @@ export const subscribeToDraftTimerUpdates = (setTimerStart) => {
     supabase.removeChannel(timerSubscription);
   };
 };
+
+
+export const subscribeToDraftLockUpdates = (setLockStatus) => {
+  console.log("Setting up draft lock real-time listener...");
+  let lastLockStatus = localStorage.getItem("lockstatus");
+  console.log("Listener has initial lock status ", lastLockStatus);
+
+  const lockSubscription = supabase
+    .channel("draft_lock_changes")
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "draft_state" }, (payload) => {
+      if (payload.new.lockstatus) {
+        console.log("⏳ Draft lock updated:", payload.new.lockstatus);
+        setLockStatus(payload.new.lockstatus);
+        localStorage.setItem("lockstatus", payload.new.lockstatus);
+        lastLockStatus = payload.new.lockstatus;
+        console.log("Listener has updated lock status as ", lastLockStatus);
+      }
+    })
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(lockSubscription);
+  };
+};
