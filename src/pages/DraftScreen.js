@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Button, Table, TableContainer, TableHead, TableRow, TableCell, TableBody, Paper, Card, CardContent, Typography } from "@mui/material";
+import { Button, Table, TableContainer, TableHead, TableRow, TableCell, TableBody, Paper, Card, CardContent, Typography, Box, Modal } from "@mui/material";
 import NavigationBar from "../NavigationBar";
 import { useLeague } from "../LeagueContext";
 import { supabase } from "../supabaseClient";
@@ -23,6 +23,7 @@ const DraftScreen = ({playersBase}) => {
     const [draftOrder, setDraftOrder] = useState([users]);
     const [isDrafting, setIsDrafting] = useState(false); 
     const isDraftingRef = useRef(false); // ✅ Instant update for isDrafting
+    
 
     //Timer State variables. 
     const [timer, setTimer] = useState(20); // 20-second countdown
@@ -32,6 +33,7 @@ const DraftScreen = ({playersBase}) => {
     const isDraftStarted = useRef(false);
     const timerRef = useRef(null); // ✅ Persist timer reference
     const [draftingMessage, setDraftingMessage] = useState("");
+    const [modalMessage, setModalMessage] = useState("");
     const draftingMessageRef = useRef("");
     let autoDraftTimeout = null; // Store timeout reference
     let isAutoDrafting = false; // Track if auto-draft is in progress
@@ -585,6 +587,7 @@ const DraftScreen = ({playersBase}) => {
 
         if (nonEmptyPlayers >= TOTAL_TEAM_SIZE) {
             console.log("No Spots Left");
+            setModalMessage("No Spots Left. Your team is complete");
             return { isValid: false, teamFull: true };
         }
     
@@ -617,12 +620,14 @@ const DraftScreen = ({playersBase}) => {
             for (const pos in REQUIRED_POSITIONS) {
                 if (positionCount[pos] < REQUIRED_POSITIONS[pos] && !player.position.includes(pos)) {
                     console.log("Final pick must satisfy minimum position requirements");
+                    setModalMessage("Team Almost Full. ",positionCount[pos], " position still not full. Try again");
                     return { isValid: false, teamFull: false };  // ✅ Default invalid return
                 }
             }
         }
     
         console.log("Player Position already filled");
+        setModalMessage("Player Position is Filled. Try Again");
         return { isValid: false };
     };
     
@@ -647,9 +652,6 @@ const DraftScreen = ({playersBase}) => {
             return false;
         }
 
-        //Stopping Timer since Draft button was clicked. 
-        clearInterval(timerInterval); // Stop the timer on manual draft
-        setTimer(20); // Reset timer for next pick
       //  isDraftStarted.current = true;  // ✅ Mark draft as started when first draft is made
 
         const team = teams.find(t => t.id === draftOrder[currentPick].user_id);
@@ -688,6 +690,10 @@ const DraftScreen = ({playersBase}) => {
 
             return false;
         }
+
+        //Stopping Timer since Draft button was clicked and the pick is valid. 
+        clearInterval(timerInterval); // Stop the timer on manual draft
+        setTimer(20); // Reset timer for next pick
 /*
         let assignedPosition = player.position;
         if (player.position.includes("-")) {
@@ -789,16 +795,27 @@ const DraftScreen = ({playersBase}) => {
             <Card className="draft-card">
             <CardContent>
                 <Typography variant="h5" className="draft-league-name">{leagueName}</Typography>
-                <Typography variant="h6" className="draft-details">Drafting Team : {draftOrder[currentPick].team_name} |  Round: {currentRound} | Players Left: {availablePlayers.length}
-                </Typography>
-                {draftOrder[currentPick]?.user_id === userId ? (
-                    <Typography variant="h6" className="draft-league-name">
-                        Time Left: {timer}s
+                {lockStatus == "draft" ? (
+                    <>
+                        <Typography variant="h6" className="draft-details">Drafting Team : {draftOrder[currentPick].team_name} |  Round: {currentRound} | Players Left: {availablePlayers.length}
+                        </Typography>
+                        {draftOrder[currentPick]?.user_id === userId ? (
+                            <Typography variant="h6" className="draft-league-name">
+                                Time Left: {timer}s
+                            </Typography>
+                        ) : (
+                            <Typography variant="h6" className="draft-league-name">Timer is {timer}. {draftOrder[currentPick].team_name} is drafting. Please wait for your turn
+                            </Typography>
+                        )}
+                    </>
+                ):lockStatus === "postdraft" ? (
+                    <Typography variant="h6" className="draft-league-name"> Drafting is done
                     </Typography>
-                ) : (
-                    <Typography variant="h6" className="draft-league-name">Timer is {timer}. {draftOrder[currentPick].team_name} is drafting. Please wait for your turn
+                ):(
+                    <Typography variant="h6" className="draft-league-name"> Draft has not begun. 
                     </Typography>
                 )}
+
                 {/*  {draftingMessage && <Typography variant="h6">{draftingMessage}</Typography>}
                 {timer === 20 ? (
                     <Typography variant="h6">{draftOrder[currentPick].team_name} is drafting. Please wait for your turn</Typography>) : null}
@@ -860,6 +877,25 @@ const DraftScreen = ({playersBase}) => {
                 </TableBody>
             </Table>
             </TableContainer>
+
+            {/* Draft Validation Modal */}
+            <Modal open={!!modalMessage} onClose={() => setModalMessage("")}>
+                <Box className="modal-box">
+                    <Typography variant="h6" className="modal-text">
+                    {modalMessage}
+                    </Typography>
+                    <div className="modal-actions">
+                    <Button 
+                        className="confirm-btn" 
+                        onClick={() => { 
+                        setModalMessage(""); // ✅ Close modal
+                        }}
+                    >
+                        OK
+                    </Button>
+                    </div>
+                </Box>
+            </Modal>
 
             {/* Styles */}
             <style jsx>{`
@@ -968,6 +1004,44 @@ const DraftScreen = ({playersBase}) => {
             .add-btn:hover {
               background: darkgreen
               color: black !important;
+            }
+
+                        .modal-box {
+              background: black;
+              color: white;
+              padding: 25px;
+              width: 300px;
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              text-align: center;
+              border-radius: 12px;
+              box-shadow: 5px 5px 15px rgba(0, 255, 127, 0.2), -5px -5px 15px rgba(0, 255, 127, 0.1);
+              border: 1px solid rgba(0, 255, 127, 0.5);
+            }
+
+            .modal-text {
+              font-size: 1.2rem;
+              margin-bottom: 20px;
+            }
+
+            .modal-actions {
+              display: flex;
+              justify-content: center;
+              gap: 15px;
+            }
+
+            .confirm-btn {
+              background: white;
+              color: black;
+              border-radius: 20px;
+              padding: 8px 20px;
+              font-weight: bold;
+            }
+
+            .confirm-btn:hover {
+              background: darkgreen;
             }
 
             .player-pool-table {
